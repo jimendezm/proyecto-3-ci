@@ -1,0 +1,1192 @@
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.HashMap;
+import java.util.Stack;
+import java.util.ArrayList;
+import java.util.Map;
+
+parser code {:
+    Tac tac = new Tac();
+    HashMap<String, ArrayList<String>> listaTablasSimbolos = new HashMap<String, ArrayList<String>>();
+    String currentHash;
+    String globalHash = "globalIS";
+    HashMap<String, String> valoresVariables = new HashMap<String, String>();
+
+    {
+        listaTablasSimbolos.put(globalHash, new ArrayList<String>());
+    }
+
+    // Variables de control para el contexto
+    private boolean inLoop = false;
+    private boolean inFunction = false;
+    private String currentFunctionReturnType = null;
+    private boolean hasReturnInFunction = false;
+
+    public void imprimirTablasSimbolos(){
+        for (String key: listaTablasSimbolos.keySet()) {
+            System.out.println("Tabla de simbolo : " + key);
+            System.out.println("Valores : ");
+            for (String item : listaTablasSimbolos.get(key)) {
+                System.out.println(item);
+            }
+            System.out.println("");
+        }
+    }
+
+    public String getTipo(ArrayList<String> tablaSimbolos, String id){
+        String tipo = "null";
+        if (tablaSimbolos == null || id == null) return tipo;
+        
+        for (String token : tablaSimbolos) {
+            if (token != null) {
+                String[] partesToken = token.split("\\.");
+                if (partesToken.length >= 2 && id.equals(partesToken[0]))
+                    tipo = partesToken[1];
+            }
+        }
+        return tipo;
+    }
+
+    private void enterScope(String scopeName) {
+        currentHash = scopeName;
+        if (!listaTablasSimbolos.containsKey(scopeName)) {
+            listaTablasSimbolos.put(scopeName, new ArrayList<String>());
+        }
+    }
+    
+    private void exitScope() {
+        currentHash = globalHash;
+    }
+    
+    private boolean addSymbol(String name, String type, String category) {
+        if (name == null || type == null) return false;
+        
+        String scope = (currentHash != null) ? currentHash : globalHash;
+        if (scope == null) scope = globalHash;
+        
+        ArrayList<String> currentScope = listaTablasSimbolos.get(scope);
+        if (currentScope == null) {
+            currentScope = new ArrayList<String>();
+            listaTablasSimbolos.put(scope, currentScope);
+        }
+        
+        for (String symbol : currentScope) {
+            if (symbol != null) {
+                String[] parts = symbol.split("\\.");
+                if (parts.length >= 1 && parts[0].equals(name)) {
+                    System.err.println("ERROR SEMANTICO: identificador '" + name + "' ya declarado en el scope actual");
+                    return false;
+                }
+            }
+        }
+        
+        String symbolEntry = name + "." + type;
+        currentScope.add(symbolEntry);
+        return true;
+    }
+    
+    private boolean addSymbolWithValue(String name, String type, String value, String category) {
+        if (name == null || type == null) return false;
+        
+        String scope = (currentHash != null) ? currentHash : globalHash;
+        if (scope == null) scope = globalHash;
+        
+        ArrayList<String> currentScope = listaTablasSimbolos.get(scope);
+        if (currentScope == null) {
+            currentScope = new ArrayList<String>();
+            listaTablasSimbolos.put(scope, currentScope);
+        }
+        
+        for (String symbol : currentScope) {
+            if (symbol != null) {
+                String[] parts = symbol.split("\\.");
+                if (parts.length >= 1 && parts[0].equals(name)) {
+                    System.err.println("ERROR SEMANTICO: identificador '" + name + "' ya declarado en el scope actual");
+                    return false;
+                }
+            }
+        }
+        
+        String symbolEntry = name + "." + type;
+        currentScope.add(symbolEntry);
+        
+        if (value != null && !value.equals("unknown")) {
+            valoresVariables.put(scope + ":" + name, value);
+        }
+        
+        System.out.println("Added symbol: " + symbolEntry + " with value: " + value + " to scope: " + scope);
+        return true;
+    }
+    
+    private String findSymbolType(String name) {
+        if (name == null) return "null";
+        
+        if (currentHash != null) {
+            ArrayList<String> currentScope = listaTablasSimbolos.get(currentHash);
+            if (currentScope != null) {
+                String tipo = getTipo(currentScope, name);
+                if (!tipo.equals("null")) return tipo;
+            }
+        }
+        
+        ArrayList<String> globalScope = listaTablasSimbolos.get(globalHash);
+        if (globalScope != null) {
+            return getTipo(globalScope, name);
+        }
+        
+        return "null";
+    }
+
+    private String getSymbolValueFromStorage(String scope, String name) {
+        if (name == null || scope == null) return "-";
+        String key = scope + ":" + name;
+        return valoresVariables.getOrDefault(key, "-");
+    }
+
+    private void saveTablesToFile() {
+        try (PrintWriter writer = new PrintWriter(new FileWriter("tablas.txt", false))) {
+            writer.println("SYMBOL TABLES");
+            writer.println();
+            
+            for (String key: listaTablasSimbolos.keySet()) {
+                writer.println("Tabla de simbolo: " + key);
+                writer.println("Nombre\t\tTipo\t\tScope");
+                writer.println("----------------------------------------");
+                
+                ArrayList<String> simbolos = listaTablasSimbolos.get(key);
+                if (simbolos != null && !simbolos.isEmpty()) {
+                    for (String simbolo : simbolos) {
+                        if (simbolo != null && !simbolo.isEmpty()) {
+                            String[] partes = simbolo.split("\\.");
+                            String nombre = partes.length > 0 ? partes[0] : "unknown";
+                            String tipo = partes.length > 1 ? partes[1] : "unknown";
+                            
+                            if (nombre.contains("tipo:")) continue;
+                            
+                            writer.printf("%-15s %-15s %-15s%n", nombre, tipo, key);
+                        }
+                    }
+                } else {
+                    writer.println("(sin símbolos)");
+                }
+                writer.println();
+            }
+            
+            writer.println("FUNCIONES");
+            writer.println("Nombre\t\tTipo Retorno\t\tScope");
+            writer.println("----------------------------------------");
+            for (String key: listaTablasSimbolos.keySet()) {
+                ArrayList<String> simbolos = listaTablasSimbolos.get(key);
+                if (simbolos != null) {
+                    for (String simbolo : simbolos) {
+                        if (simbolo != null && simbolo.contains("tipo:")) {
+                            String tipoRetorno = simbolo.contains("tipo:main:") ? 
+                                               simbolo.replace("tipo:main:", "") : 
+                                               simbolo.replace("tipo:function:", "");
+                            String nombreFuncion = key;
+                            writer.printf("%-15s %-15s %-15s%n", nombreFuncion, tipoRetorno, key);
+                        }
+                    }
+                }
+            }
+            
+            System.out.println("Symbol tables saved to tablas.txt");
+        } catch (IOException e) {
+            System.err.println("Error saving symbol tables: " + e.getMessage());
+        }
+    }
+
+    private String getSymbolValue(Symbol sym) {
+        if (sym == null || sym.value == null) {
+            return "unknown";
+        }
+        return sym.value.toString();
+    }
+
+    private String getIDValue(Object idObj) {
+        if (idObj == null) {
+            return "unknown";
+        }
+        if (idObj instanceof Symbol) {
+            Symbol sym = (Symbol) idObj;
+            return getSymbolValue(sym);
+        }
+        if (idObj instanceof Res) {
+            Res res = (Res) idObj;
+            return res.reg();
+        }
+        return idObj.toString();
+    }
+
+    private String getResType(Object resObj) {
+        if (resObj == null) return "null";
+        if (resObj instanceof Res) {
+            return ((Res) resObj).type();
+        }
+        return "null";
+    }
+
+    private String getResReg(Object resObj) {
+        if (resObj == null) return "null";
+        if (resObj instanceof Res) {
+            return ((Res) resObj).reg();
+        }
+        return "null";
+    }
+
+    private String getExprValue(Object exprObj) {
+        if (exprObj == null) {
+            return "unknown";
+        }
+        if (exprObj instanceof Symbol) {
+            Symbol sym = (Symbol) exprObj;
+            return getSymbolValue(sym);
+        }
+        if (exprObj instanceof Res) {
+            return ((Res) exprObj).reg();
+        }
+        return exprObj.toString();
+    }
+
+    private String extractArrayName(Object arrayDecl) {
+        if (arrayDecl == null) {
+            return null;
+        }
+        if (arrayDecl instanceof Res) {
+            return ((Res) arrayDecl).reg();
+        }
+        return getIDValue(arrayDecl);
+    }
+
+    // Métodos de verificación semántica simplificados
+    private boolean isIntegerType(String type) {
+        return "int".equals(type);
+    }
+
+    private boolean isNumericType(String type) {
+        return "int".equals(type) || "float".equals(type);
+    }
+
+    private boolean isBooleanType(String type) {
+        return "bool".equals(type);
+    }
+
+    private boolean isArrayType(String type) {
+        return type != null && type.endsWith("[]");
+    }
+
+    private boolean isFunctionType(String type) {
+        return type != null && (type.startsWith("function:") || type.startsWith("main:"));
+    }
+
+    private boolean isStringType(String type) {
+        return "string".equals(type);
+    }
+
+    private boolean isVoidType(String type) {
+        return "void".equals(type);
+    }
+
+    // Verificaciones generales de tipos
+    private void checkNumericContext(String type, String operation) {
+        if (!isNumericType(type)) {
+            System.err.println("ERROR SEMANTICO: valor no numérico en contexto numérico para operación " + operation);
+        }
+    }
+
+    private void checkBooleanContext(String type, String operation) {
+        if (!isBooleanType(type)) {
+            System.err.println("ERROR SEMANTICO: valor no booleano en contexto booleano para operación " + operation);
+        }
+    }
+
+    private void checkNonVoidContext(String type, String context) {
+        if (isVoidType(type)) {
+            System.err.println("ERROR SEMANTICO: tipo void no válido en contexto " + context);
+        }
+    }
+
+    private void checkNonArrayContext(String type, String context) {
+        if (isArrayType(type)) {
+            System.err.println("ERROR SEMANTICO: array en contexto no array para " + context);
+        }
+    }
+
+    private void checkNonFunctionContext(String type, String context) {
+        if (isFunctionType(type)) {
+            System.err.println("ERROR SEMANTICO: función en contexto no función para " + context);
+        }
+    }
+
+    private void checkAssignmentCompatibility(String targetType, String sourceType) {
+        if (targetType.equals("int") && sourceType.equals("float")) {
+            System.err.println("ERROR SEMANTICO: pérdida de precisión en asignación numérica (float a int)");
+        } else if (!targetType.equals(sourceType) && 
+                  !(targetType.equals("float") && sourceType.equals("int"))) {
+            System.err.println("ERROR SEMANTICO: tipos incompatibles en asignación: " + targetType + " vs " + sourceType);
+        }
+    }
+
+    private void checkOperationCompatibility(String type1, String type2, String operation) {
+        if (!type1.equals(type2)) {
+            System.err.println("ERROR SEMANTICO: tipos incompatibles en operación " + operation + ": " + type1 + " vs " + type2);
+        }
+    }
+
+    private void checkForLoopControlVariable(String idStr) {
+        String type = findSymbolType(idStr);
+        if (type.equals("null")) {
+            System.err.println("ERROR SEMANTICO: variable de control '" + idStr + "' no declarada en bucle for");
+        } else if (!isIntegerType(type)) {
+            System.err.println("ERROR SEMANTICO: variable de control '" + idStr + "' debe ser de tipo int en bucle for");
+        }
+    }
+
+    private void checkFunctionCall(String funcName) {
+        String funcType = findSymbolType(funcName);
+        if (funcType.equals("null")) {
+            System.err.println("ERROR SEMANTICO: función '" + funcName + "' no declarada");
+        } else if (!isFunctionType(funcType)) {
+            System.err.println("ERROR SEMANTICO: '" + funcName + "' no es una función");
+        }
+    }
+
+    private void checkReturnType(String expectedType, String actualType, boolean hasValue) {
+        if ("void".equals(expectedType)) {
+            if (hasValue) {
+                System.err.println("ERROR SEMANTICO: función void no puede retornar valor");
+            }
+        } else {
+            if (!hasValue) {
+                System.err.println("ERROR SEMANTICO: función no void debe retornar valor");
+            } else {
+                checkAssignmentCompatibility(expectedType, actualType);
+            }
+        }
+    }
+
+    private void checkArrayIndex(String indexType) {
+        if (!"int".equals(indexType)) {
+            System.err.println("ERROR SEMANTICO: índice de array debe ser entero");
+        }
+    }
+
+    private void checkDivisionByZero(String divisor) {
+        if ("0".equals(divisor) || "0.0".equals(divisor)) {
+            System.err.println("ERROR SEMANTICO: división por cero");
+        }
+    }
+
+    private void checkBreakInLoop() {
+        if (!inLoop) {
+            System.err.println("ERROR SEMANTICO: break fuera de estructura de loop");
+        }
+    }
+
+    private void checkReturnInFunction() {
+        if (!inFunction) {
+            System.err.println("ERROR SEMANTICO: return fuera de función");
+        }
+    }
+
+    private void checkArrayDeclaration(String arrayName, String size) {
+        if (size == null || "unknown".equals(size)) {
+            System.err.println("ERROR SEMANTICO: array '" + arrayName + "' declarado sin tamaño");
+        }
+    }
+
+    private void checkMissingReturn() {
+        if (inFunction && !"void".equals(currentFunctionReturnType) && !hasReturnInFunction) {
+            System.err.println("ERROR SEMANTICO: función '" + currentHash + "' no tiene return");
+        }
+    }
+
+    private void captureVariableUsage(String name, String context) {
+        if (name == null) return;
+        
+        String type = findSymbolType(name);
+        if (type.equals("null")) {
+            System.err.println("ERROR SEMANTICO: variable '" + name + "' no declarada en " + context);
+        }
+    }
+
+    private void updateVariableValue(String name, String value) {
+        if (name != null && value != null && !value.equals("unknown") && currentHash != null) {
+            String key = currentHash + ":" + name;
+            valoresVariables.put(key, value);
+            System.out.println("Updated variable '" + name + "' value to: " + value);
+        }
+    }
+
+    @Override
+    public void syntax_error(Symbol cur_token) {
+        if (cur_token != null && cur_token.value != null) {
+            System.err.println("Syntax error near '" + cur_token.value + "'.");
+        } else {
+            System.err.println("Syntax error.");
+        }
+    }
+
+    @Override
+    public void unrecovered_syntax_error(Symbol cur_token) throws Exception {
+        if (cur_token != null && cur_token.value != null) {
+            System.err.println("Syntax error near '" + cur_token.value + "'. Couldn't recover.");
+        } else {
+            System.err.println("Syntax error. Couldn't recover.");
+        }
+    }
+:}
+
+// Keywords
+terminal LET, INT, FLOAT, BOOL, CHAR, STRING, FOR, RETURN, INPUT, OUTPUT, PRINCIPAL;
+terminal LOOP, DECIDE, ELSE, TRUE, FALSE, VOID, OF, END, EXIT, WHEN, STEP, TO, DOWNTO;
+terminal DO, BREAK;
+
+// Symbols
+terminal SIGMA, DOLLAR, LPAREN, RPAREN, LBLOCK, RBLOCK, ASSIGN, PLUS, MINUS, MULT;
+terminal DIV, MOD, POW, AND, OR, EQ, NEQ, GT, LT, GE, LE, COMMA, ARROW, LBRACKET;
+terminal RBRACKET, DIVINT, INC, DEC;
+
+// Identifier and literals
+terminal String ID, INT_LIT, FLOAT_LIT, CHAR_LIT, STRING_LIT;
+
+// For error recovering
+terminal String LEXICAL_ERROR;
+
+// Non-terminal declarations
+non terminal program, global_vars, global_var, functions, function, params, param, main;
+non terminal type_nt,type_fn, array_decl, init_nt, code_block, statement;
+non terminal sentence, control_structure, var_creation, var_assignment, function_call;
+non terminal literal_params, inputfn, outputfn, output_value, code_block_return, decide;
+non terminal decide_options, decide_option, decide_else, loop_nt, for_nt, cs_code_block;
+non terminal array_lit, int_array_content, char_array_content, decide_option_cond;
+non terminal decide_option_body, bool_lit;
+
+// Res expressions
+non terminal Res expr, inc_dec_expr, primary_expr, or_expr, and_expr, lp_rel_expr;
+non terminal Res hp_rel_expr, logic_neg, adit_expr, mult_expr, unary_minus, unary_expr;
+non terminal Res num_lit, power_expr;
+
+// Operator precedence
+precedence left OR;
+precedence left AND;
+precedence left EQ, NEQ;
+precedence left LT, GT, LE, GE;
+precedence left PLUS, MINUS;
+precedence left MULT, DIV, DIVINT, MOD;
+precedence right POW;
+
+// Start symbol
+start with program;
+
+// Program structure
+program ::= 
+        global_vars functions main
+        {:
+            saveTablesToFile();
+            imprimirTablasSimbolos();
+            tac.dump();
+            System.out.println("Parsing completed.");
+        :} ;
+
+// Global variables
+global_vars ::= global_var global_vars | ;
+
+// Global variable declarations
+global_var ::= LET type_nt:type ID:id DOLLAR
+             {:
+                 String typeStr = ((Res)type).type();
+                 String idStr = getIDValue(id);
+                 if (!addSymbol(idStr, typeStr, "global_variable")) {
+                     System.err.println("ERROR SEMANTICO: identificador '" + idStr + "' ya existe en scope global");
+                 }
+             :}
+             | LET type_nt:type array_decl:arr DOLLAR
+             {:
+                 String typeStr = ((Res)type).type();
+                 String arrayName = extractArrayName(arr);
+                 if (arrayName != null) {
+                     if (!addSymbol(arrayName, typeStr + "[]", "global_variable")) {
+                         System.err.println("ERROR SEMANTICO: arreglo '" + arrayName + "' ya existe en scope global");
+                     }
+                 }
+             :}
+             | LET type_nt:type ID:id init_nt DOLLAR
+             {:
+                 String typeStr = ((Res)type).type();
+                 String idStr = getIDValue(id);
+                 if (!addSymbol(idStr, typeStr, "global_variable")) {
+                     System.err.println("ERROR SEMANTICO: identificador '" + idStr + "' ya existe en scope global");
+                 }
+             :}
+             | LET type_nt:type array_decl:arr init_nt DOLLAR
+             {:
+                 String typeStr = ((Res)type).type();
+                 String arrayName = extractArrayName(arr);
+                 if (arrayName != null) {
+                     if (!addSymbol(arrayName, typeStr + "[]", "global_variable")) {
+                         System.err.println("ERROR SEMANTICO: arreglo '" + arrayName + "' ya existe en scope global");
+                     }
+                 }
+             :} ;
+
+// Main function without parentheses
+main ::= type_fn:type PRINCIPAL:id 
+        {:
+            String tipoFuncion = ((Res)type).type();
+            String idStr = getIDValue(id);
+
+            if(findSymbolType(idStr).equals("null")){
+                System.out.println("inicio de función principal");
+                currentHash = "principal";
+                currentFunctionReturnType = tipoFuncion;
+                inFunction = true;
+                hasReturnInFunction = false;
+                ArrayList<String> funcionMain = new ArrayList<String>();
+                funcionMain.add("tipo:main:" + tipoFuncion);
+                listaTablasSimbolos.put(currentHash, funcionMain);
+            } else {
+                System.err.println("ERROR SEMANTICO: función principal ya declarada");
+            }
+        :}
+        LBLOCK code_block:cb RBLOCK
+        {:
+            checkMissingReturn();
+            System.out.println("fin de función principal");
+            inFunction = false;
+            currentFunctionReturnType = null;
+            exitScope();
+        :} ;
+
+// Type definitions
+type_nt ::= INT {: RESULT = new Res("int", ""); :}
+          | FLOAT {: RESULT = new Res("float", ""); :}
+          | BOOL {: RESULT = new Res("bool", ""); :}
+          | CHAR {: RESULT = new Res("char", ""); :}
+          | STRING {: RESULT = new Res("string", ""); :};
+
+// Function type
+type_fn ::= type_nt:type {: RESULT = type; :}
+          | VOID {: RESULT = new Res("void", ""); :};
+
+// Array declaration
+array_decl ::= ID:id LBRACKET adit_expr:index RBRACKET 
+              {:
+                  String indexType = getResType(index);
+                  checkArrayIndex(indexType);
+                  String arrayName = getIDValue(id);
+                  String indexValue = getResReg(index);
+                  checkArrayDeclaration(arrayName, indexValue);
+                  RESULT = new Res("array", arrayName);
+              :};
+
+// Array literal
+array_lit ::= LBLOCK int_array_content RBLOCK
+            | LBLOCK char_array_content RBLOCK
+            | LBLOCK RBLOCK
+            | LBLOCK error RBLOCK ;
+
+int_array_content ::= int_array_content COMMA INT_LIT | INT_LIT ;
+
+char_array_content ::= char_array_content COMMA CHAR_LIT | CHAR_LIT ;
+
+// Initialization
+init_nt ::= ASSIGN expr
+          | ASSIGN array_lit ;
+
+// Expression parsing
+expr ::= or_expr:e {: RESULT = e; :}
+       | LEXICAL_ERROR:e {: System.err.println("Lexical error: " + e + "."); :}
+       | error {: System.err.println("Malformed expression."); :};
+
+// Logical expressions
+or_expr ::= or_expr:e1 OR and_expr:e2
+          {: 
+            if (e1 != null && e2 != null) {
+                String tipo1 = getResType(e1);
+                String tipo2 = getResType(e2);
+                checkBooleanContext(tipo1, "OR");
+                checkBooleanContext(tipo2, "OR");
+                checkOperationCompatibility(tipo1, tipo2, "OR");
+                RESULT = new Res("bool", "or_temp");
+            }
+          :}
+          | and_expr:e {: RESULT = e; :};
+
+and_expr ::= and_expr:e1 AND lp_rel_expr:e2
+           {: 
+             if (e1 != null && e2 != null) {
+                 String tipo1 = getResType(e1);
+                 String tipo2 = getResType(e2);
+                 checkBooleanContext(tipo1, "AND");
+                 checkBooleanContext(tipo2, "AND");
+                 checkOperationCompatibility(tipo1, tipo2, "AND");
+                 RESULT = new Res("bool", "and_temp");
+             }
+           :}
+           | lp_rel_expr:e {: RESULT = e; :};
+
+// Relational expressions
+lp_rel_expr ::= hp_rel_expr:e1 EQ hp_rel_expr:e2
+              {: 
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNonVoidContext(tipo1, "comparación EQ");
+                    checkNonVoidContext(tipo2, "comparación EQ");
+                    if (isArrayType(tipo1) || isArrayType(tipo2)) {
+                        System.err.println("ERROR SEMANTICO: comparación de arrays no soportada");
+                    }
+                    checkOperationCompatibility(tipo1, tipo2, "EQ");
+                    RESULT = new Res("bool", "eq_temp");
+                }
+              :}
+              | hp_rel_expr:e1 NEQ hp_rel_expr:e2
+              {: 
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNonVoidContext(tipo1, "comparación NEQ");
+                    checkNonVoidContext(tipo2, "comparación NEQ");
+                    if (isArrayType(tipo1) || isArrayType(tipo2)) {
+                        System.err.println("ERROR SEMANTICO: comparación de arrays no soportada");
+                    }
+                    checkOperationCompatibility(tipo1, tipo2, "NEQ");
+                    RESULT = new Res("bool", "neq_temp");
+                }
+              :}
+              | hp_rel_expr:e {: RESULT = e; :};
+
+hp_rel_expr ::= adit_expr:e1 GT adit_expr:e2
+              {: 
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "GT");
+                    checkNumericContext(tipo2, "GT");
+                    checkOperationCompatibility(tipo1, tipo2, "GT");
+                    RESULT = new Res("bool", "gt_temp");
+                }
+              :}
+              | adit_expr:e1 GE adit_expr:e2
+              {: 
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "GE");
+                    checkNumericContext(tipo2, "GE");
+                    checkOperationCompatibility(tipo1, tipo2, "GE");
+                    RESULT = new Res("bool", "ge_temp");
+                }
+              :}
+              | adit_expr:e1 LT adit_expr:e2
+              {: 
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "LT");
+                    checkNumericContext(tipo2, "LT");
+                    checkOperationCompatibility(tipo1, tipo2, "LT");
+                    RESULT = new Res("bool", "lt_temp");
+                }
+              :}
+              | adit_expr:e1 LE adit_expr:e2
+              {: 
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "LE");
+                    checkNumericContext(tipo2, "LE");
+                    checkOperationCompatibility(tipo1, tipo2, "LE");
+                    RESULT = new Res("bool", "le_temp");
+                }
+              :}
+              | adit_expr:e {: RESULT = e; :};
+
+// Arithmetic expressions
+adit_expr ::= adit_expr:e1 PLUS mult_expr:e2
+            {:
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "suma");
+                    checkNumericContext(tipo2, "suma");
+                    checkOperationCompatibility(tipo1, tipo2, "suma");
+                    String resultType = tipo1.equals("float") || tipo2.equals("float") ? "float" : "int";
+                    RESULT = new Res(resultType, "add_temp");
+                }
+            :}
+            | adit_expr:e1 MINUS mult_expr:e2
+            {:
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "resta");
+                    checkNumericContext(tipo2, "resta");
+                    checkOperationCompatibility(tipo1, tipo2, "resta");
+                    String resultType = tipo1.equals("float") || tipo2.equals("float") ? "float" : "int";
+                    RESULT = new Res(resultType, "sub_temp");
+                }
+            :}
+            | mult_expr:e {: RESULT = e; :};
+
+mult_expr ::= mult_expr:e1 MULT unary_expr:e2
+            {:
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "multiplicación");
+                    checkNumericContext(tipo2, "multiplicación");
+                    checkOperationCompatibility(tipo1, tipo2, "multiplicación");
+                    String resultType = tipo1.equals("float") || tipo2.equals("float") ? "float" : "int";
+                    RESULT = new Res(resultType, "mult_temp");
+                }
+            :}
+            | mult_expr:e1 DIV unary_expr:e2
+            {:
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "división");
+                    checkNumericContext(tipo2, "división");
+                    checkOperationCompatibility(tipo1, tipo2, "división");
+                    String divisor = getResReg(e2);
+                    checkDivisionByZero(divisor);
+                    RESULT = new Res("float", "div_temp");
+                }
+            :}
+            | mult_expr:e1 DIVINT unary_expr:e2
+            {:
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "división entera");
+                    checkNumericContext(tipo2, "división entera");
+                    if (!isIntegerType(tipo1) || !isIntegerType(tipo2)) {
+                        System.err.println("ERROR SEMANTICO: división entera requiere operandos enteros");
+                    }
+                    String divisor = getResReg(e2);
+                    checkDivisionByZero(divisor);
+                    RESULT = new Res("int", "divint_temp");
+                }
+            :}
+            | mult_expr:e1 MOD unary_expr:e2
+            {:
+                if (e1 != null && e2 != null) {
+                    String tipo1 = getResType(e1);
+                    String tipo2 = getResType(e2);
+                    checkNumericContext(tipo1, "módulo");
+                    checkNumericContext(tipo2, "módulo");
+                    if (!isIntegerType(tipo1) || !isIntegerType(tipo2)) {
+                        System.err.println("ERROR SEMANTICO: módulo requiere operandos enteros");
+                    }
+                    String divisor = getResReg(e2);
+                    checkDivisionByZero(divisor);
+                    RESULT = new Res("int", "mod_temp");
+                }
+            :}
+            | unary_expr:e {: RESULT = e; :};
+
+// Unary expressions
+unary_expr ::= logic_neg:e {: RESULT = e; :}
+             | unary_minus:e {: RESULT = e; :}
+             | power_expr:e {: RESULT = e; :};
+
+logic_neg ::= SIGMA ID:id
+            {:
+                String idStr = getIDValue(id);
+                String type = findSymbolType(idStr);
+                if (type.equals("null")) {
+                    System.err.println("ERROR SEMANTICO: variable '" + idStr + "' no declarada en negación lógica");
+                } else {
+                    checkBooleanContext(type, "NOT");
+                    RESULT = new Res("bool", "not_temp");
+                }
+            :}
+            | SIGMA LPAREN expr:e RPAREN
+            {:
+                String tipoExpr = getResType(e);
+                checkBooleanContext(tipoExpr, "NOT");
+                RESULT = new Res("bool", "not_temp");
+            :};
+
+unary_minus ::= MINUS num_lit:lit
+              {: RESULT = new Res(getResType(lit), "uminus_temp"); :}
+              | MINUS LPAREN expr:e RPAREN
+              {: 
+                String tipoExpr = getResType(e);
+                checkNumericContext(tipoExpr, "menos unario");
+                RESULT = new Res(tipoExpr, "uminus_temp");
+              :};
+
+// Numeric literals
+num_lit ::= INT_LIT:i {: RESULT = new Res("int", tac.primary(i)); :}
+          | FLOAT_LIT:f {: RESULT = new Res("float", tac.primary(f)); :};
+
+// Power expression
+power_expr ::= inc_dec_expr:e1 POW inc_dec_expr:e2
+             {:
+               if (e1 != null && e2 != null) {
+                   String tipo1 = getResType(e1);
+                   String tipo2 = getResType(e2);
+                   checkNumericContext(tipo1, "potencia");
+                   checkNumericContext(tipo2, "potencia");
+                   RESULT = new Res("float", tac.power(getResReg(e1), getResReg(e2)));
+               }
+             :}
+             | inc_dec_expr:e {: RESULT = e; :};
+
+// Increment/decrement expressions
+inc_dec_expr ::= ID:id INC
+                {:
+                   String idStr = getIDValue(id);
+                   String type = findSymbolType(idStr);
+                   if (!isIntegerType(type)) {
+                       System.err.println("ERROR SEMANTICO: incremento en variable no numérica '" + idStr + "'");
+                   }
+                   RESULT = new Res("int", tac.inc(id));
+               :}
+               | ID:id DEC
+                {:
+                   String idStr = getIDValue(id);
+                   String type = findSymbolType(idStr);
+                   if (!isIntegerType(type)) {
+                       System.err.println("ERROR SEMANTICO: decremento en variable no numérica '" + idStr + "'");
+                   }
+                   RESULT = new Res("int", tac.dec(id));
+                :}
+               | primary_expr:p {: RESULT = p; :};
+
+// Primary expressions
+primary_expr ::= INT_LIT:i {: RESULT = new Res("int", tac.primary(i)); :}
+               | FLOAT_LIT:f {: RESULT = new Res("float", tac.primary(f)); :}
+               | CHAR_LIT:c {: RESULT = new Res("char", "char_temp"); :}
+               | STRING_LIT:s {: RESULT = new Res("string", "string_temp"); :}
+               | ID:id 
+               {:
+                   String idStr = getIDValue(id);
+                   String type = findSymbolType(idStr);
+                   if (type.equals("null")) {
+                       System.err.println("ERROR SEMANTICO: variable '" + idStr + "' no declarada en expresión");
+                   } else {
+                       checkNonFunctionContext(type, "expresión");
+                       RESULT = new Res(type, tac.primary(id));
+                   }
+               :}
+               | TRUE {: RESULT = new Res("bool", tac.primary("1")); :}
+               | FALSE {: RESULT = new Res("bool", tac.primary("0")); :}
+               | function_call:fc {: RESULT = (Res)fc; :}
+               | array_decl:arr {: RESULT = (Res)arr; :}
+               | LPAREN expr:e RPAREN {: RESULT = e; :};
+
+// Function declarations
+functions ::= functions function | ;
+
+// Function definition
+function ::= 
+    type_fn:type ID:id
+    {:
+        String tipoFuncion = ((Res)type).type();
+        String idStr = getIDValue(id);
+        
+        if (findSymbolType(idStr).equals("null")) {
+            System.out.println("inicio de función: " + idStr);
+            currentHash = idStr;
+            currentFunctionReturnType = tipoFuncion;
+            inFunction = true;
+            hasReturnInFunction = false;
+            ArrayList<String> funcionMain = new ArrayList<String>();
+            funcionMain.add("tipo:function:" + tipoFuncion);
+            listaTablasSimbolos.put(currentHash, funcionMain);
+        } else {
+            System.err.println("ERROR SEMANTICO: función '" + idStr + "' ya declarada");
+        }
+    :}
+    LPAREN params RPAREN LBLOCK code_block:cb RBLOCK
+    {:
+        checkMissingReturn();
+        System.out.println("fin de función: " + currentHash);
+        inFunction = false;
+        currentFunctionReturnType = null;
+        hasReturnInFunction = false;
+        exitScope();
+    :};
+
+// Parameters
+params ::= param 
+        | param COMMA params
+        | ;
+
+// Parameter definitions
+param ::= type_nt:type ID:id
+        {:
+            String typeStr = ((Res)type).type();
+            String idStr = getIDValue(id);
+            if (!addSymbol(idStr, typeStr, "parameter")) {
+                System.err.println("ERROR SEMANTICO: parámetro '" + idStr + "' ya declarado");
+            }
+        :}
+        | type_nt:type ID:id LBRACKET RBRACKET
+        {:
+            String typeStr = ((Res)type).type();
+            String idStr = getIDValue(id);
+            if (!addSymbol(idStr, typeStr + "[]", "parameter")) {
+                System.err.println("ERROR SEMANTICO: parámetro arreglo '" + idStr + "' ya declarado");
+            }
+        :} ;
+
+// Code block
+code_block ::= code_block statement | ;
+
+// Statements
+statement ::= sentence | control_structure ;
+
+// Sentence types
+sentence ::= var_creation
+           | var_assignment DOLLAR
+           | function_call DOLLAR
+           | ID:id INC DOLLAR
+               {:
+                   String idStr = getIDValue(id);
+                   String type = findSymbolType(idStr);
+                   if (!isIntegerType(type)) {
+                       System.err.println("ERROR SEMANTICO: incremento en variable no numérica '" + idStr + "'");
+                   }
+                   captureVariableUsage(idStr, "increment");
+               :}
+           | ID:id DEC DOLLAR
+               {:
+                   String idStr = getIDValue(id);
+                   String type = findSymbolType(idStr);
+                   if (!isIntegerType(type)) {
+                       System.err.println("ERROR SEMANTICO: decremento en variable no numérica '" + idStr + "'");
+                   }
+                   captureVariableUsage(idStr, "decrement");
+               :}
+           | inputfn DOLLAR
+           | outputfn DOLLAR
+           | code_block_return
+           | BREAK DOLLAR
+               {:
+                   checkBreakInLoop();
+               :}
+           | error DOLLAR {: System.err.println("Malformed sentence."); :};
+
+// Input function
+inputfn ::= INPUT LPAREN ID:id RPAREN
+           {:
+               String idStr = getIDValue(id);
+               captureVariableUsage(idStr, "input");
+           :};
+
+// Output function
+outputfn ::= OUTPUT LPAREN output_value RPAREN 
+            {:
+                if (cur_token != null && cur_token.value != null) {
+                    System.out.println("Output value: " + cur_token.value);
+                }
+            :};
+
+// Output values
+output_value ::= INT_LIT | FLOAT_LIT | STRING_LIT | ID:id 
+                {:
+                    String idStr = getIDValue(id);
+                    captureVariableUsage(idStr, "output");
+                :} 
+                | TRUE | FALSE ;
+
+// Variable creation
+var_creation ::= LET type_nt:type ID:id DOLLAR
+               {:
+                   String typeStr = ((Res)type).type();
+                   String idStr = getIDValue(id);
+                   if (!addSymbol(idStr, typeStr, "local_variable")) {
+                       System.err.println("ERROR SEMANTICO: variable local '" + idStr + "' ya declarada");
+                   }
+               :}
+               | LET type_nt:type array_decl:arr DOLLAR
+               {:
+                   String typeStr = ((Res)type).type();
+                   String arrayName = extractArrayName(arr);
+                   if (arrayName != null) {
+                       if (!addSymbol(arrayName, typeStr + "[]", "local_variable")) {
+                           System.err.println("ERROR SEMANTICO: arreglo local '" + arrayName + "' ya declarado");
+                       }
+                   }
+               :}
+               | LET type_nt:type ID:id init_nt DOLLAR
+               {:
+                   String typeStr = ((Res)type).type();
+                   String idStr = getIDValue(id);
+                   String valorStr = "unknown";
+                   if (!addSymbolWithValue(idStr, typeStr, valorStr, "local_variable")) {
+                       System.err.println("ERROR SEMANTICO: variable local '" + idStr + "' ya declarada");
+                   }
+                   System.out.println("Variable '" + idStr + "' initialized with value");
+               :}
+               | LET type_nt:type array_decl:arr init_nt DOLLAR
+               {:
+                   String typeStr = ((Res)type).type();
+                   String arrayName = extractArrayName(arr);
+                   String valorStr = "unknown";
+                   if (arrayName != null) {
+                       if (!addSymbolWithValue(arrayName, typeStr + "[]", valorStr, "local_variable")) {
+                           System.err.println("ERROR SEMANTICO: arreglo local '" + arrayName + "' ya declarado");
+                       }
+                       System.out.println("Array '" + arrayName + "' initialized with value");
+                   }
+               :};
+
+// Variable assignment
+var_assignment ::= ID:id ASSIGN expr:value
+                {:
+                     String idStr = getIDValue(id);
+                     String valueStr = getExprValue(value);
+                     captureVariableUsage(idStr, "assignment");
+                     
+                     String varType = findSymbolType(idStr);
+                     String valueType = getResType(value);
+                     
+                     if (varType.equals("null")) {
+                         System.err.println("ERROR SEMANTICO: asignación a variable no declarada '" + idStr + "'");
+                     } else {
+                         checkAssignmentCompatibility(varType, valueType);
+                     }
+                 :}
+                 | array_decl ASSIGN expr:value ;
+
+// Function call
+function_call ::= ID:id LPAREN literal_params:params RPAREN 
+                {:
+                    String idStr = getIDValue(id);
+                    checkFunctionCall(idStr);
+                    captureVariableUsage(idStr, "function call");
+                    RESULT = new Res("unknown", "func_call_temp");
+                :};
+
+// Literal parameters
+literal_params ::= expr
+                 | literal_params COMMA expr | ;
+
+// Control structures
+control_structure ::= decide | loop_nt | for_nt ;
+
+// Decide structure (if-else)
+decide ::= DECIDE OF 
+          {:
+              enterScope("Structure: decide");
+          :}
+          decide_options decide_else END DECIDE DOLLAR
+          {:
+              exitScope();
+          :} ;
+
+decide_options ::= decide_option
+                 | decide_option decide_options ;
+
+decide_option ::= decide_option_cond 
+                 {:
+                     enterScope("Branch: decide_option");
+                 :}
+                 decide_option_body
+                 {:
+                     exitScope();
+                 :} ;
+
+decide_option_cond ::= LPAREN expr RPAREN ARROW LBLOCK
+                     | ID ARROW LBLOCK
+                     | bool_lit ARROW LBLOCK ;
+
+bool_lit ::= TRUE | FALSE ;
+
+decide_option_body ::= cs_code_block RBLOCK
+                     | error RBLOCK ;
+
+decide_else ::= ELSE ARROW LBLOCK 
+               {:
+                   enterScope("Branch: else");
+               :}
+               cs_code_block RBLOCK
+               {:
+                   exitScope();
+               :} 
+               | ;
+
+// Loop structure
+loop_nt ::= LOOP 
+           {:
+               enterScope("Structure: loop");
+               inLoop = true;
+           :}
+           cs_code_block EXIT WHEN expr DOLLAR END LOOP DOLLAR
+           {:
+               inLoop = false;
+               exitScope();
+           :} ;
+
+// For loops
+for_nt ::= FOR ID:id ASSIGN expr:init STEP INT_LIT:step TO expr:end DO LBLOCK 
+          {:
+              enterScope("Structure: for");
+              inLoop = true;
+              String idStr = getIDValue(id);
+              String initStr = getExprValue(init);
+              checkForLoopControlVariable(idStr);
+              if (findSymbolType(idStr).equals("null")) {
+                  if (currentHash != null) {
+                      listaTablasSimbolos.get(currentHash).add(idStr + ".int");
+                      updateVariableValue(idStr, initStr);
+                  }
+              } else {
+                  updateVariableValue(idStr, initStr);
+              }
+          :}
+          cs_code_block RBLOCK DOLLAR
+          {:
+              inLoop = false;
+              exitScope();
+          :}
+         | FOR ID:id ASSIGN expr:init STEP INT_LIT:step DOWNTO expr:end DO LBLOCK 
+          {:
+              enterScope("Structure: for (downto)");
+              inLoop = true;
+              String idStr = getIDValue(id);
+              String initStr = getExprValue(init);
+              checkForLoopControlVariable(idStr);
+              if (findSymbolType(idStr).equals("null")) {
+                  if (currentHash != null) {
+                      listaTablasSimbolos.get(currentHash).add(idStr + ".int");
+                      updateVariableValue(idStr, initStr);
+                  }
+              } else {
+                  updateVariableValue(idStr, initStr);
+              }
+          :}
+          cs_code_block RBLOCK DOLLAR
+          {:
+              inLoop = false;
+              exitScope();
+          :} ;
+
+// Control structure code block
+cs_code_block ::= cs_code_block statement
+                | statement ;
+
+// Return statement
+code_block_return ::= RETURN expr:value DOLLAR 
+                    {:
+                        checkReturnInFunction();
+                        hasReturnInFunction = true;
+                        if (inFunction && currentFunctionReturnType != null) {
+                            String actualType = getResType(value);
+                            checkReturnType(currentFunctionReturnType, actualType, true);
+                        }
+                    :}
+                    | RETURN DOLLAR 
+                    {:
+                        checkReturnInFunction();
+                        hasReturnInFunction = true;
+                        if (inFunction && currentFunctionReturnType != null) {
+                            checkReturnType(currentFunctionReturnType, "void", false);
+                        }
+                    :};

@@ -1,0 +1,14 @@
+void principal ¿
+  |let int x = 1 + 2 * 3$
+  let int x$
+  x = 2 ^ x--$
+?
+
+¡
+  t1 = 2
+  t2 = 3
+  t3 = t1 * t2
+  t4 = 1
+  t5 = t4 + t3
+  x = t5
+!
