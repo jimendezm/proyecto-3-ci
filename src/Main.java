@@ -9,7 +9,7 @@ public class Main {
       return;
     }
 
-    FileReader f = new FileReader("../test/" + args[0]);
+    FileReader f = new FileReader("../" + args[0]);
     parser p = new parser(new Lexer(f));
     try {
       p.parse();

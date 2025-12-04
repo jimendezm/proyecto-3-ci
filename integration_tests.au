@@ -1,0 +1,110 @@
+| Global variables.
+let int intArr1[1]$
+let float float1$
+let bool bool1 = true$
+let char charArr[10] = ¿'a', 'b', 'c', 'd', 'e'?$
+let int intArr2[10] = ¿-1, 0, 1, 10, 100?$
+let string string1 = "testStr"$
+
+| Functions.
+float floatFn єint i, float f, bool b, char c, string sэ ¿
+  decide of
+  єint1 == 1э -> ¿
+    outputє1э$
+    return f$
+  ? єint1 == 2э -> ¿
+    outputє2э$
+    return f$
+  ? єint1 == 3э -> ¿
+    outputє3э$
+    return f$
+  ? else -> ¿
+    outputє4э$
+    return f$
+  ?
+  end decide$
+  return f$
+?
+int intFn єint i, float f, bool b, char c, string sэ ¿
+  let int int1 $
+  let int intArr[10] = ¿-1, 0, 1, 10, 100?$
+  floatFnєint1, f, b, c, "param"э$
+  int1++$
+  int1--$
+  let string inputStr$
+  inputєinputStrэ$
+  outputє1э$
+  outputє1.1э$
+  outputє"strOutput"э$
+  outputєint1э$
+  return int1$
+?
+bool boolFn єint i, float f, bool b, char c, string sэ ¿
+  loop
+    outputє"instruction1\n"э$
+    outputє"instruction2\n"э$
+    outputє"instruction3\n"э$
+    break$
+  exit when f == 1$
+  end loop$
+  return b$
+?
+char charFn єint i, float f, bool b, char c, string sэ ¿
+  let int y = 100$
+  for x = 1 step 1 to 10^2 do ¿
+    outputє"instruction1\n"э$
+    outputє"instruction2\n"э$
+    outputє"instruction3\n"э$
+    break$
+  ?$
+  for x = -1 step -1 downto -є10^2э do ¿
+    outputє"instruction1\n"э$
+    outputє"instruction2\n"э$
+    outputє"instruction3\n"э$
+    break$
+  ?$
+  return c$
+?
+string stringFn єint i, float f, bool b, char c, string sэ ¿
+  return s$
+?
+void voidFn єint i[], float f[], bool b[], char c[], string s[]э ¿
+  return$
+?
+
+void principal ¿
+  let int i = 0$
+  let int j[123] = ¿1?$
+  let bool k = true$
+  let int x = true
+              ~ false
+              ~ Σk
+                @ 1 > 1 == 1 >= 1
+                @ 1 < 1 != 1 <=
+                  1 + 1 - 1 + 1 - 1 +
+                  1 * 1
+                  + 1 / 1
+                  + 1 // 1
+                  + 1 % 1
+                  + 1 *
+                    -2
+                    * -є1э
+                    * i++ ^ i--
+                    * 10 ^ 10
+                    * -123
+                    * 0
+                    * 123
+                    * 123.0
+                    * 0.123
+                    * -123.123
+                    * i
+                    * intFnєi, 1.1, true, 'c', "abc"э
+                    * floatFnєi, 1.1, true, 'c', "abc"э
+                    * j[0]
+                    * є1э
+                    * є1 + 11 * 111.1 / 0.1111э$
+  i = 1$
+  j[1] = 2$
+  k = false$
+  return$
+?
