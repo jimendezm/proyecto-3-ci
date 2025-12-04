@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Map;
 
 parser code {:
+    SemanticAnalyzer sem = new SemanticAnalyzer(true);
     Tac tac = new Tac();
     HashMap<String, ArrayList<String>> listaTablasSimbolos = new HashMap<String, ArrayList<String>>();
     String currentHash;
@@ -15,12 +16,6 @@ parser code {:
     {
         listaTablasSimbolos.put(globalHash, new ArrayList<String>());
     }
-
-    // Variables de control para el contexto
-    private boolean inLoop = false;
-    private boolean inFunction = false;
-    private String currentFunctionReturnType = null;
-    private boolean hasReturnInFunction = false;
 
     public void imprimirTablasSimbolos(){
         for (String key: listaTablasSimbolos.keySet()) {
@@ -114,7 +109,7 @@ parser code {:
             valoresVariables.put(scope + ":" + name, value);
         }
         
-        System.out.println("Added symbol: " + symbolEntry + " with value: " + value + " to scope: " + scope);
+        // System.out.println("Added symbol: " + symbolEntry + " with value: " + value + " to scope: " + scope);
         return true;
     }
     
@@ -258,163 +253,11 @@ parser code {:
         return getIDValue(arrayDecl);
     }
 
-    // Métodos de verificación semántica simplificados
-    private boolean isIntegerType(String type) {
-        return "int".equals(type);
-    }
-
-    private boolean isNumericType(String type) {
-        return "int".equals(type) || "float".equals(type);
-    }
-
-    private boolean isBooleanType(String type) {
-        return "bool".equals(type);
-    }
-
-    private boolean isArrayType(String type) {
-        return type != null && type.endsWith("[]");
-    }
-
-    private boolean isFunctionType(String type) {
-        return type != null && (type.startsWith("function:") || type.startsWith("main:"));
-    }
-
-    private boolean isStringType(String type) {
-        return "string".equals(type);
-    }
-
-    private boolean isVoidType(String type) {
-        return "void".equals(type);
-    }
-
-    // Verificaciones generales de tipos
-    private void checkNumericContext(String type, String operation) {
-        if (!isNumericType(type)) {
-            System.err.println("ERROR SEMANTICO: valor no numérico en contexto numérico para operación " + operation);
-        }
-    }
-
-    private void checkBooleanContext(String type, String operation) {
-        if (!isBooleanType(type)) {
-            System.err.println("ERROR SEMANTICO: valor no booleano en contexto booleano para operación " + operation);
-        }
-    }
-
-    private void checkNonVoidContext(String type, String context) {
-        if (isVoidType(type)) {
-            System.err.println("ERROR SEMANTICO: tipo void no válido en contexto " + context);
-        }
-    }
-
-    private void checkNonArrayContext(String type, String context) {
-        if (isArrayType(type)) {
-            System.err.println("ERROR SEMANTICO: array en contexto no array para " + context);
-        }
-    }
-
-    private void checkNonFunctionContext(String type, String context) {
-        if (isFunctionType(type)) {
-            System.err.println("ERROR SEMANTICO: función en contexto no función para " + context);
-        }
-    }
-
-    private void checkAssignmentCompatibility(String targetType, String sourceType) {
-        if (targetType.equals("int") && sourceType.equals("float")) {
-            System.err.println("ERROR SEMANTICO: pérdida de precisión en asignación numérica (float a int)");
-        } else if (!targetType.equals(sourceType) && 
-                  !(targetType.equals("float") && sourceType.equals("int"))) {
-            System.err.println("ERROR SEMANTICO: tipos incompatibles en asignación: " + targetType + " vs " + sourceType);
-        }
-    }
-
-    private void checkOperationCompatibility(String type1, String type2, String operation) {
-        if (!type1.equals(type2)) {
-            System.err.println("ERROR SEMANTICO: tipos incompatibles en operación " + operation + ": " + type1 + " vs " + type2);
-        }
-    }
-
-    private void checkForLoopControlVariable(String idStr) {
-        String type = findSymbolType(idStr);
-        if (type.equals("null")) {
-            System.err.println("ERROR SEMANTICO: variable de control '" + idStr + "' no declarada en bucle for");
-        } else if (!isIntegerType(type)) {
-            System.err.println("ERROR SEMANTICO: variable de control '" + idStr + "' debe ser de tipo int en bucle for");
-        }
-    }
-
-    private void checkFunctionCall(String funcName) {
-        String funcType = findSymbolType(funcName);
-        if (funcType.equals("null")) {
-            System.err.println("ERROR SEMANTICO: función '" + funcName + "' no declarada");
-        } else if (!isFunctionType(funcType)) {
-            System.err.println("ERROR SEMANTICO: '" + funcName + "' no es una función");
-        }
-    }
-
-    private void checkReturnType(String expectedType, String actualType, boolean hasValue) {
-        if ("void".equals(expectedType)) {
-            if (hasValue) {
-                System.err.println("ERROR SEMANTICO: función void no puede retornar valor");
-            }
-        } else {
-            if (!hasValue) {
-                System.err.println("ERROR SEMANTICO: función no void debe retornar valor");
-            } else {
-                checkAssignmentCompatibility(expectedType, actualType);
-            }
-        }
-    }
-
-    private void checkArrayIndex(String indexType) {
-        if (!"int".equals(indexType)) {
-            System.err.println("ERROR SEMANTICO: índice de array debe ser entero");
-        }
-    }
-
-    private void checkDivisionByZero(String divisor) {
-        if ("0".equals(divisor) || "0.0".equals(divisor)) {
-            System.err.println("ERROR SEMANTICO: división por cero");
-        }
-    }
-
-    private void checkBreakInLoop() {
-        if (!inLoop) {
-            System.err.println("ERROR SEMANTICO: break fuera de estructura de loop");
-        }
-    }
-
-    private void checkReturnInFunction() {
-        if (!inFunction) {
-            System.err.println("ERROR SEMANTICO: return fuera de función");
-        }
-    }
-
-    private void checkArrayDeclaration(String arrayName, String size) {
-        if (size == null || "unknown".equals(size)) {
-            System.err.println("ERROR SEMANTICO: array '" + arrayName + "' declarado sin tamaño");
-        }
-    }
-
-    private void checkMissingReturn() {
-        if (inFunction && !"void".equals(currentFunctionReturnType) && !hasReturnInFunction) {
-            System.err.println("ERROR SEMANTICO: función '" + currentHash + "' no tiene return");
-        }
-    }
-
-    private void captureVariableUsage(String name, String context) {
-        if (name == null) return;
-        
-        String type = findSymbolType(name);
-        if (type.equals("null")) {
-            System.err.println("ERROR SEMANTICO: variable '" + name + "' no declarada en " + context);
-        }
-    }
-
-    private void updateVariableValue(String name, String value) {
+    public void updateVariableValue(String name, String value) {
         if (name != null && value != null && !value.equals("unknown") && currentHash != null) {
             String key = currentHash + ":" + name;
             valoresVariables.put(key, value);
-            System.out.println("Updated variable '" + name + "' value to: " + value);
+            // System.out.println("Updated variable '" + name + "' value to: " + value);
         }
     }
 
@@ -483,8 +326,8 @@ start with program;
 program ::= 
         global_vars functions main
         {:
-            saveTablesToFile();
-            imprimirTablasSimbolos();
+            // saveTablesToFile();
+            // imprimirTablasSimbolos();
             tac.dump();
             System.out.println("Parsing completed.");
         :} ;
@@ -537,11 +380,11 @@ main ::= type_fn:type PRINCIPAL:id
             String idStr = getIDValue(id);
 
             if(findSymbolType(idStr).equals("null")){
-                System.out.println("inicio de función principal");
+                // System.out.println("inicio de función principal");
                 currentHash = "principal";
-                currentFunctionReturnType = tipoFuncion;
-                inFunction = true;
-                hasReturnInFunction = false;
+                sem.currentFunctionReturnType = tipoFuncion;
+                sem.inFunction = true;
+                sem.hasReturnInFunction = false;
                 ArrayList<String> funcionMain = new ArrayList<String>();
                 funcionMain.add("tipo:main:" + tipoFuncion);
                 listaTablasSimbolos.put(currentHash, funcionMain);
@@ -551,10 +394,10 @@ main ::= type_fn:type PRINCIPAL:id
         :}
         LBLOCK code_block:cb RBLOCK
         {:
-            checkMissingReturn();
-            System.out.println("fin de función principal");
-            inFunction = false;
-            currentFunctionReturnType = null;
+            sem.checkMissingReturn(currentHash);
+            // System.out.println("fin de función principal");
+            sem.inFunction = false;
+            sem.currentFunctionReturnType = null;
             exitScope();
         :} ;
 
@@ -573,10 +416,10 @@ type_fn ::= type_nt:type {: RESULT = type; :}
 array_decl ::= ID:id LBRACKET adit_expr:index RBRACKET 
               {:
                   String indexType = getResType(index);
-                  checkArrayIndex(indexType);
+                  sem.checkArrayIndex(indexType);
                   String arrayName = getIDValue(id);
                   String indexValue = getResReg(index);
-                  checkArrayDeclaration(arrayName, indexValue);
+                  sem.checkArrayDeclaration(arrayName, indexValue);
                   RESULT = new Res("array", arrayName);
               :};
 
@@ -605,9 +448,9 @@ or_expr ::= or_expr:e1 OR and_expr:e2
             if (e1 != null && e2 != null) {
                 String tipo1 = getResType(e1);
                 String tipo2 = getResType(e2);
-                checkBooleanContext(tipo1, "OR");
-                checkBooleanContext(tipo2, "OR");
-                checkOperationCompatibility(tipo1, tipo2, "OR");
+                sem.checkBooleanContext(tipo1, "OR");
+                sem.checkBooleanContext(tipo2, "OR");
+                sem.checkOperationCompatibility(tipo1, tipo2, "OR");
                 RESULT = new Res("bool", "or_temp");
             }
           :}
@@ -618,9 +461,9 @@ and_expr ::= and_expr:e1 AND lp_rel_expr:e2
              if (e1 != null && e2 != null) {
                  String tipo1 = getResType(e1);
                  String tipo2 = getResType(e2);
-                 checkBooleanContext(tipo1, "AND");
-                 checkBooleanContext(tipo2, "AND");
-                 checkOperationCompatibility(tipo1, tipo2, "AND");
+                 sem.checkBooleanContext(tipo1, "AND");
+                 sem.checkBooleanContext(tipo2, "AND");
+                 sem.checkOperationCompatibility(tipo1, tipo2, "AND");
                  RESULT = new Res("bool", "and_temp");
              }
            :}
@@ -632,12 +475,12 @@ lp_rel_expr ::= hp_rel_expr:e1 EQ hp_rel_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNonVoidContext(tipo1, "comparación EQ");
-                    checkNonVoidContext(tipo2, "comparación EQ");
-                    if (isArrayType(tipo1) || isArrayType(tipo2)) {
+                    sem.checkNonVoidContext(tipo1, "comparación EQ");
+                    sem.checkNonVoidContext(tipo2, "comparación EQ");
+                    if (sem.isArrayType(tipo1) || sem.isArrayType(tipo2)) {
                         System.err.println("ERROR SEMANTICO: comparación de arrays no soportada");
                     }
-                    checkOperationCompatibility(tipo1, tipo2, "EQ");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "EQ");
                     RESULT = new Res("bool", "eq_temp");
                 }
               :}
@@ -646,12 +489,12 @@ lp_rel_expr ::= hp_rel_expr:e1 EQ hp_rel_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNonVoidContext(tipo1, "comparación NEQ");
-                    checkNonVoidContext(tipo2, "comparación NEQ");
-                    if (isArrayType(tipo1) || isArrayType(tipo2)) {
+                    sem.checkNonVoidContext(tipo1, "comparación NEQ");
+                    sem.checkNonVoidContext(tipo2, "comparación NEQ");
+                    if (sem.isArrayType(tipo1) || sem.isArrayType(tipo2)) {
                         System.err.println("ERROR SEMANTICO: comparación de arrays no soportada");
                     }
-                    checkOperationCompatibility(tipo1, tipo2, "NEQ");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "NEQ");
                     RESULT = new Res("bool", "neq_temp");
                 }
               :}
@@ -662,9 +505,9 @@ hp_rel_expr ::= adit_expr:e1 GT adit_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "GT");
-                    checkNumericContext(tipo2, "GT");
-                    checkOperationCompatibility(tipo1, tipo2, "GT");
+                    sem.checkNumericContext(tipo1, "GT");
+                    sem.checkNumericContext(tipo2, "GT");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "GT");
                     RESULT = new Res("bool", "gt_temp");
                 }
               :}
@@ -673,9 +516,9 @@ hp_rel_expr ::= adit_expr:e1 GT adit_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "GE");
-                    checkNumericContext(tipo2, "GE");
-                    checkOperationCompatibility(tipo1, tipo2, "GE");
+                    sem.checkNumericContext(tipo1, "GE");
+                    sem.checkNumericContext(tipo2, "GE");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "GE");
                     RESULT = new Res("bool", "ge_temp");
                 }
               :}
@@ -684,9 +527,9 @@ hp_rel_expr ::= adit_expr:e1 GT adit_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "LT");
-                    checkNumericContext(tipo2, "LT");
-                    checkOperationCompatibility(tipo1, tipo2, "LT");
+                    sem.checkNumericContext(tipo1, "LT");
+                    sem.checkNumericContext(tipo2, "LT");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "LT");
                     RESULT = new Res("bool", "lt_temp");
                 }
               :}
@@ -695,9 +538,9 @@ hp_rel_expr ::= adit_expr:e1 GT adit_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "LE");
-                    checkNumericContext(tipo2, "LE");
-                    checkOperationCompatibility(tipo1, tipo2, "LE");
+                    sem.checkNumericContext(tipo1, "LE");
+                    sem.checkNumericContext(tipo2, "LE");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "LE");
                     RESULT = new Res("bool", "le_temp");
                 }
               :}
@@ -709,9 +552,9 @@ adit_expr ::= adit_expr:e1 PLUS mult_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "suma");
-                    checkNumericContext(tipo2, "suma");
-                    checkOperationCompatibility(tipo1, tipo2, "suma");
+                    sem.checkNumericContext(tipo1, "suma");
+                    sem.checkNumericContext(tipo2, "suma");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "suma");
                     String resultType = tipo1.equals("float") || tipo2.equals("float") ? "float" : "int";
                     RESULT = new Res(resultType, "add_temp");
                 }
@@ -721,9 +564,9 @@ adit_expr ::= adit_expr:e1 PLUS mult_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "resta");
-                    checkNumericContext(tipo2, "resta");
-                    checkOperationCompatibility(tipo1, tipo2, "resta");
+                    sem.checkNumericContext(tipo1, "resta");
+                    sem.checkNumericContext(tipo2, "resta");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "resta");
                     String resultType = tipo1.equals("float") || tipo2.equals("float") ? "float" : "int";
                     RESULT = new Res(resultType, "sub_temp");
                 }
@@ -735,9 +578,9 @@ mult_expr ::= mult_expr:e1 MULT unary_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "multiplicación");
-                    checkNumericContext(tipo2, "multiplicación");
-                    checkOperationCompatibility(tipo1, tipo2, "multiplicación");
+                    sem.checkNumericContext(tipo1, "multiplicación");
+                    sem.checkNumericContext(tipo2, "multiplicación");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "multiplicación");
                     String resultType = tipo1.equals("float") || tipo2.equals("float") ? "float" : "int";
                     RESULT = new Res(resultType, "mult_temp");
                 }
@@ -747,11 +590,11 @@ mult_expr ::= mult_expr:e1 MULT unary_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "división");
-                    checkNumericContext(tipo2, "división");
-                    checkOperationCompatibility(tipo1, tipo2, "división");
+                    sem.checkNumericContext(tipo1, "división");
+                    sem.checkNumericContext(tipo2, "división");
+                    sem.checkOperationCompatibility(tipo1, tipo2, "división");
                     String divisor = getResReg(e2);
-                    checkDivisionByZero(divisor);
+                    sem.checkDivisionByZero(divisor);
                     RESULT = new Res("float", "div_temp");
                 }
             :}
@@ -760,13 +603,13 @@ mult_expr ::= mult_expr:e1 MULT unary_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "división entera");
-                    checkNumericContext(tipo2, "división entera");
-                    if (!isIntegerType(tipo1) || !isIntegerType(tipo2)) {
+                    sem.checkNumericContext(tipo1, "división entera");
+                    sem.checkNumericContext(tipo2, "división entera");
+                    if (!sem.isIntegerType(tipo1) || !sem.isIntegerType(tipo2)) {
                         System.err.println("ERROR SEMANTICO: división entera requiere operandos enteros");
                     }
                     String divisor = getResReg(e2);
-                    checkDivisionByZero(divisor);
+                    sem.checkDivisionByZero(divisor);
                     RESULT = new Res("int", "divint_temp");
                 }
             :}
@@ -775,13 +618,13 @@ mult_expr ::= mult_expr:e1 MULT unary_expr:e2
                 if (e1 != null && e2 != null) {
                     String tipo1 = getResType(e1);
                     String tipo2 = getResType(e2);
-                    checkNumericContext(tipo1, "módulo");
-                    checkNumericContext(tipo2, "módulo");
-                    if (!isIntegerType(tipo1) || !isIntegerType(tipo2)) {
+                    sem.checkNumericContext(tipo1, "módulo");
+                    sem.checkNumericContext(tipo2, "módulo");
+                    if (!sem.isIntegerType(tipo1) || !sem.isIntegerType(tipo2)) {
                         System.err.println("ERROR SEMANTICO: módulo requiere operandos enteros");
                     }
                     String divisor = getResReg(e2);
-                    checkDivisionByZero(divisor);
+                    sem.checkDivisionByZero(divisor);
                     RESULT = new Res("int", "mod_temp");
                 }
             :}
@@ -799,14 +642,14 @@ logic_neg ::= SIGMA ID:id
                 if (type.equals("null")) {
                     System.err.println("ERROR SEMANTICO: variable '" + idStr + "' no declarada en negación lógica");
                 } else {
-                    checkBooleanContext(type, "NOT");
+                    sem.checkBooleanContext(type, "NOT");
                     RESULT = new Res("bool", "not_temp");
                 }
             :}
             | SIGMA LPAREN expr:e RPAREN
             {:
                 String tipoExpr = getResType(e);
-                checkBooleanContext(tipoExpr, "NOT");
+                sem.checkBooleanContext(tipoExpr, "NOT");
                 RESULT = new Res("bool", "not_temp");
             :};
 
@@ -815,7 +658,7 @@ unary_minus ::= MINUS num_lit:lit
               | MINUS LPAREN expr:e RPAREN
               {: 
                 String tipoExpr = getResType(e);
-                checkNumericContext(tipoExpr, "menos unario");
+                sem.checkNumericContext(tipoExpr, "menos unario");
                 RESULT = new Res(tipoExpr, "uminus_temp");
               :};
 
@@ -829,8 +672,8 @@ power_expr ::= inc_dec_expr:e1 POW inc_dec_expr:e2
                if (e1 != null && e2 != null) {
                    String tipo1 = getResType(e1);
                    String tipo2 = getResType(e2);
-                   checkNumericContext(tipo1, "potencia");
-                   checkNumericContext(tipo2, "potencia");
+                   sem.checkNumericContext(tipo1, "potencia");
+                   sem.checkNumericContext(tipo2, "potencia");
                    RESULT = new Res("float", tac.power(getResReg(e1), getResReg(e2)));
                }
              :}
@@ -841,7 +684,7 @@ inc_dec_expr ::= ID:id INC
                 {:
                    String idStr = getIDValue(id);
                    String type = findSymbolType(idStr);
-                   if (!isIntegerType(type)) {
+                   if (!sem.isIntegerType(type)) {
                        System.err.println("ERROR SEMANTICO: incremento en variable no numérica '" + idStr + "'");
                    }
                    RESULT = new Res("int", tac.inc(id));
@@ -850,7 +693,7 @@ inc_dec_expr ::= ID:id INC
                 {:
                    String idStr = getIDValue(id);
                    String type = findSymbolType(idStr);
-                   if (!isIntegerType(type)) {
+                   if (!sem.isIntegerType(type)) {
                        System.err.println("ERROR SEMANTICO: decremento en variable no numérica '" + idStr + "'");
                    }
                    RESULT = new Res("int", tac.dec(id));
@@ -869,7 +712,7 @@ primary_expr ::= INT_LIT:i {: RESULT = new Res("int", tac.primary(i)); :}
                    if (type.equals("null")) {
                        System.err.println("ERROR SEMANTICO: variable '" + idStr + "' no declarada en expresión");
                    } else {
-                       checkNonFunctionContext(type, "expresión");
+                       sem.checkNonFunctionContext(type, "expresión");
                        RESULT = new Res(type, tac.primary(id));
                    }
                :}
@@ -890,11 +733,11 @@ function ::=
         String idStr = getIDValue(id);
         
         if (findSymbolType(idStr).equals("null")) {
-            System.out.println("inicio de función: " + idStr);
+            // System.out.println("inicio de función: " + idStr);
             currentHash = idStr;
-            currentFunctionReturnType = tipoFuncion;
-            inFunction = true;
-            hasReturnInFunction = false;
+            sem.currentFunctionReturnType = tipoFuncion;
+            sem.inFunction = true;
+            sem.hasReturnInFunction = false;
             ArrayList<String> funcionMain = new ArrayList<String>();
             funcionMain.add("tipo:function:" + tipoFuncion);
             listaTablasSimbolos.put(currentHash, funcionMain);
@@ -904,11 +747,11 @@ function ::=
     :}
     LPAREN params RPAREN LBLOCK code_block:cb RBLOCK
     {:
-        checkMissingReturn();
-        System.out.println("fin de función: " + currentHash);
-        inFunction = false;
-        currentFunctionReturnType = null;
-        hasReturnInFunction = false;
+        sem.checkMissingReturn(currentHash);
+        // System.out.println("fin de función: " + currentHash);
+        sem.inFunction = false;
+        sem.currentFunctionReturnType = null;
+        sem.hasReturnInFunction = false;
         exitScope();
     :};
 
@@ -949,26 +792,26 @@ sentence ::= var_creation
                {:
                    String idStr = getIDValue(id);
                    String type = findSymbolType(idStr);
-                   if (!isIntegerType(type)) {
+                   if (!sem.isIntegerType(type)) {
                        System.err.println("ERROR SEMANTICO: incremento en variable no numérica '" + idStr + "'");
                    }
-                   captureVariableUsage(idStr, "increment");
+                   sem.captureVariableUsage(idStr, "increment", type);
                :}
            | ID:id DEC DOLLAR
                {:
                    String idStr = getIDValue(id);
                    String type = findSymbolType(idStr);
-                   if (!isIntegerType(type)) {
+                   if (!sem.isIntegerType(type)) {
                        System.err.println("ERROR SEMANTICO: decremento en variable no numérica '" + idStr + "'");
                    }
-                   captureVariableUsage(idStr, "decrement");
+                   sem.captureVariableUsage(idStr, "decrement", type);
                :}
            | inputfn DOLLAR
            | outputfn DOLLAR
            | code_block_return
            | BREAK DOLLAR
                {:
-                   checkBreakInLoop();
+                   sem.checkBreakInLoop();
                :}
            | error DOLLAR {: System.err.println("Malformed sentence."); :};
 
@@ -976,14 +819,14 @@ sentence ::= var_creation
 inputfn ::= INPUT LPAREN ID:id RPAREN
            {:
                String idStr = getIDValue(id);
-               captureVariableUsage(idStr, "input");
+               sem.captureVariableUsage(idStr, "input", findSymbolType(idStr));
            :};
 
 // Output function
 outputfn ::= OUTPUT LPAREN output_value RPAREN 
             {:
                 if (cur_token != null && cur_token.value != null) {
-                    System.out.println("Output value: " + cur_token.value);
+                    // System.out.println("Output value: " + cur_token.value);
                 }
             :};
 
@@ -991,7 +834,7 @@ outputfn ::= OUTPUT LPAREN output_value RPAREN
 output_value ::= INT_LIT | FLOAT_LIT | STRING_LIT | ID:id 
                 {:
                     String idStr = getIDValue(id);
-                    captureVariableUsage(idStr, "output");
+                    sem.captureVariableUsage(idStr, "output", findSymbolType(idStr));
                 :} 
                 | TRUE | FALSE ;
 
@@ -1022,7 +865,7 @@ var_creation ::= LET type_nt:type ID:id DOLLAR
                    if (!addSymbolWithValue(idStr, typeStr, valorStr, "local_variable")) {
                        System.err.println("ERROR SEMANTICO: variable local '" + idStr + "' ya declarada");
                    }
-                   System.out.println("Variable '" + idStr + "' initialized with value");
+                   // System.out.println("Variable '" + idStr + "' initialized with value");
                :}
                | LET type_nt:type array_decl:arr init_nt DOLLAR
                {:
@@ -1033,7 +876,7 @@ var_creation ::= LET type_nt:type ID:id DOLLAR
                        if (!addSymbolWithValue(arrayName, typeStr + "[]", valorStr, "local_variable")) {
                            System.err.println("ERROR SEMANTICO: arreglo local '" + arrayName + "' ya declarado");
                        }
-                       System.out.println("Array '" + arrayName + "' initialized with value");
+                       // System.out.println("Array '" + arrayName + "' initialized with value");
                    }
                :};
 
@@ -1042,7 +885,7 @@ var_assignment ::= ID:id ASSIGN expr:value
                 {:
                      String idStr = getIDValue(id);
                      String valueStr = getExprValue(value);
-                     captureVariableUsage(idStr, "assignment");
+                     sem.captureVariableUsage(idStr, "assignment", findSymbolType(idStr));
                      
                      String varType = findSymbolType(idStr);
                      String valueType = getResType(value);
@@ -1050,7 +893,7 @@ var_assignment ::= ID:id ASSIGN expr:value
                      if (varType.equals("null")) {
                          System.err.println("ERROR SEMANTICO: asignación a variable no declarada '" + idStr + "'");
                      } else {
-                         checkAssignmentCompatibility(varType, valueType);
+                         sem.checkAssignmentCompatibility(varType, valueType);
                      }
                  :}
                  | array_decl ASSIGN expr:value ;
@@ -1059,8 +902,9 @@ var_assignment ::= ID:id ASSIGN expr:value
 function_call ::= ID:id LPAREN literal_params:params RPAREN 
                 {:
                     String idStr = getIDValue(id);
-                    checkFunctionCall(idStr);
-                    captureVariableUsage(idStr, "function call");
+                    String funcType = findSymbolType(idStr);
+                    sem.checkFunctionCall(idStr, funcType);
+                    sem.captureVariableUsage(idStr, "function call", findSymbolType(idStr));
                     RESULT = new Res("unknown", "func_call_temp");
                 :};
 
@@ -1116,11 +960,11 @@ decide_else ::= ELSE ARROW LBLOCK
 loop_nt ::= LOOP 
            {:
                enterScope("Structure: loop");
-               inLoop = true;
+               sem.inLoop = true;
            :}
            cs_code_block EXIT WHEN expr DOLLAR END LOOP DOLLAR
            {:
-               inLoop = false;
+               sem.inLoop = false;
                exitScope();
            :} ;
 
@@ -1128,10 +972,11 @@ loop_nt ::= LOOP
 for_nt ::= FOR ID:id ASSIGN expr:init STEP INT_LIT:step TO expr:end DO LBLOCK 
           {:
               enterScope("Structure: for");
-              inLoop = true;
+              sem.inLoop = true;
               String idStr = getIDValue(id);
               String initStr = getExprValue(init);
-              checkForLoopControlVariable(idStr);
+              String type = findSymbolType(idStr);
+              sem.checkForLoopControlVariable(idStr, type);
               if (findSymbolType(idStr).equals("null")) {
                   if (currentHash != null) {
                       listaTablasSimbolos.get(currentHash).add(idStr + ".int");
@@ -1143,16 +988,17 @@ for_nt ::= FOR ID:id ASSIGN expr:init STEP INT_LIT:step TO expr:end DO LBLOCK
           :}
           cs_code_block RBLOCK DOLLAR
           {:
-              inLoop = false;
+              sem.inLoop = false;
               exitScope();
           :}
          | FOR ID:id ASSIGN expr:init STEP INT_LIT:step DOWNTO expr:end DO LBLOCK 
           {:
               enterScope("Structure: for (downto)");
-              inLoop = true;
+              sem.inLoop = true;
               String idStr = getIDValue(id);
               String initStr = getExprValue(init);
-              checkForLoopControlVariable(idStr);
+              String type = findSymbolType(idStr);
+              sem.checkForLoopControlVariable(idStr, type);
               if (findSymbolType(idStr).equals("null")) {
                   if (currentHash != null) {
                       listaTablasSimbolos.get(currentHash).add(idStr + ".int");
@@ -1164,7 +1010,7 @@ for_nt ::= FOR ID:id ASSIGN expr:init STEP INT_LIT:step TO expr:end DO LBLOCK
           :}
           cs_code_block RBLOCK DOLLAR
           {:
-              inLoop = false;
+              sem.inLoop = false;
               exitScope();
           :} ;
 
@@ -1175,18 +1021,18 @@ cs_code_block ::= cs_code_block statement
 // Return statement
 code_block_return ::= RETURN expr:value DOLLAR 
                     {:
-                        checkReturnInFunction();
-                        hasReturnInFunction = true;
-                        if (inFunction && currentFunctionReturnType != null) {
+                        sem.checkReturnInFunction();
+                        sem.hasReturnInFunction = true;
+                        if (sem.inFunction && sem.currentFunctionReturnType != null) {
                             String actualType = getResType(value);
-                            checkReturnType(currentFunctionReturnType, actualType, true);
+                            sem.checkReturnType(sem.currentFunctionReturnType, actualType, true);
                         }
                     :}
                     | RETURN DOLLAR 
                     {:
-                        checkReturnInFunction();
-                        hasReturnInFunction = true;
-                        if (inFunction && currentFunctionReturnType != null) {
-                            checkReturnType(currentFunctionReturnType, "void", false);
+                        sem.checkReturnInFunction();
+                        sem.hasReturnInFunction = true;
+                        if (sem.inFunction && sem.currentFunctionReturnType != null) {
+                            sem.checkReturnType(sem.currentFunctionReturnType, "void", false);
                         }
                     :};

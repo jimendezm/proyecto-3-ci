@@ -1,0 +1,118 @@
+SYMBOL TABLES
+
+Tabla de simbolo: stringFn
+Nombre		Tipo		Scope
+----------------------------------------
+i               int             stringFn       
+f               float           stringFn       
+b               bool            stringFn       
+c               char            stringFn       
+s               string          stringFn       
+
+Tabla de simbolo: Branch: else
+Nombre		Tipo		Scope
+----------------------------------------
+(sin símbolos)
+
+Tabla de simbolo: Branch: decide_option
+Nombre		Tipo		Scope
+----------------------------------------
+(sin símbolos)
+
+Tabla de simbolo: Structure: loop
+Nombre		Tipo		Scope
+----------------------------------------
+(sin símbolos)
+
+Tabla de simbolo: charFn
+Nombre		Tipo		Scope
+----------------------------------------
+i               int             charFn         
+f               float           charFn         
+b               bool            charFn         
+c               char            charFn         
+s               string          charFn         
+y               int             charFn         
+
+Tabla de simbolo: intFn
+Nombre		Tipo		Scope
+----------------------------------------
+i               int             intFn          
+f               float           intFn          
+b               bool            intFn          
+c               char            intFn          
+s               string          intFn          
+int1            int             intFn          
+intArr          int[]           intFn          
+inputStr        string          intFn          
+
+Tabla de simbolo: Structure: for
+Nombre		Tipo		Scope
+----------------------------------------
+x               int             Structure: for 
+
+Tabla de simbolo: Structure: for (downto)
+Nombre		Tipo		Scope
+----------------------------------------
+x               int             Structure: for (downto)
+
+Tabla de simbolo: principal
+Nombre		Tipo		Scope
+----------------------------------------
+i               int             principal      
+j               int[]           principal      
+k               bool            principal      
+x               int             principal      
+
+Tabla de simbolo: Structure: decide
+Nombre		Tipo		Scope
+----------------------------------------
+(sin símbolos)
+
+Tabla de simbolo: floatFn
+Nombre		Tipo		Scope
+----------------------------------------
+i               int             floatFn        
+f               float           floatFn        
+b               bool            floatFn        
+c               char            floatFn        
+s               string          floatFn        
+
+Tabla de simbolo: voidFn
+Nombre		Tipo		Scope
+----------------------------------------
+i               int[]           voidFn         
+f               float[]         voidFn         
+b               bool[]          voidFn         
+c               char[]          voidFn         
+s               string[]        voidFn         
+
+Tabla de simbolo: boolFn
+Nombre		Tipo		Scope
+----------------------------------------
+i               int             boolFn         
+f               float           boolFn         
+b               bool            boolFn         
+c               char            boolFn         
+s               string          boolFn         
+
+Tabla de simbolo: globalIS
+Nombre		Tipo		Scope
+----------------------------------------
+intArr1         int[]           globalIS       
+float1          float           globalIS       
+bool1           bool            globalIS       
+charArr         char[]          globalIS       
+intArr2         int[]           globalIS       
+string1         string          globalIS       
+
+FUNCIONES
+Nombre		Tipo Retorno		Scope
+----------------------------------------
+stringFn        string          stringFn       
+charFn          char            charFn         
+intFn           int             intFn          
+principal       void            principal      
+floatFn         float           floatFn        
+voidFn          void            voidFn         
+boolFn          bool            boolFn         
