@@ -6,6 +6,8 @@ public class Mips {
 
   private ArrayList<String> textSegment = new ArrayList<>();
 
+  private int labelCounter = 0;
+
   private void addData(String s, boolean spacesToTabs) {
     if (spacesToTabs) {
       dataSegment.add(s.replace(" ", "\t"));
@@ -20,9 +22,9 @@ public class Mips {
 
   private void addText(String s, boolean spacesToTabs) {
     if (spacesToTabs) {
-      dataSegment.add(s.replace(" ", "\t"));
+      textSegment.add(s.replace(" ", "\t"));
     } else {
-      dataSegment.add(s);
+      textSegment.add(s);
     }
   }
 
@@ -30,20 +32,36 @@ public class Mips {
     addText(s, true);
   }
 
-  public void genMain() {
-    addText(".text");
+  private String getLabel() {
+    return "L" + labelCounter++;
+  }
+
+  public void genMainStart() {
     addText(".globl main", false);
     addText("main:");
-    addText(" li $v0, 10");
-    addText(" syscall");
+  }
+
+  public void genMainEnd() {
+    addText("  li $v0, 10");
+    addText("  syscall");
+  }
+
+  public void genFuncStart(String name) {
+    addText(getLabel() + ": # " + name, false);
+  }
+
+  public void genFuncEnd() {
+    addText("  jr $ra");
   }
 
   public void dump(String filename) {
     try {
       PrintWriter writer = new PrintWriter("../" + filename);
+      writer.println(".data");
       for (String s : dataSegment) {
         writer.println(s);
       }
+      writer.println(".text");
       for (String s : textSegment) {
         writer.println(s);
       }

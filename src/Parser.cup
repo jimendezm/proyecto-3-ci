@@ -331,7 +331,7 @@ program ::=
         {:
             // saveTablesToFile();
             // imprimirTablasSimbolos();
-            tac.dump();
+            // tac.dump();
             mips.dump(filename.split("\\.")[0] + ".asm");
             System.out.println("Parsing completed.");
         :} ;
@@ -395,6 +395,7 @@ main ::= type_fn:type PRINCIPAL:id
             } else {
                 System.err.println("ERROR SEMANTICO: función principal ya declarada");
             }
+            mips.genMainStart();
         :}
         LBLOCK code_block:cb RBLOCK
         {:
@@ -403,7 +404,7 @@ main ::= type_fn:type PRINCIPAL:id
             sem.inFunction = false;
             sem.currentFunctionReturnType = null;
             exitScope();
-            mips.genMain();
+            mips.genMainEnd();
         :} ;
 
 // Type definitions
@@ -749,6 +750,7 @@ function ::=
         } else {
             System.err.println("ERROR SEMANTICO: función '" + idStr + "' ya declarada");
         }
+        mips.genFuncStart(id);
     :}
     LPAREN params RPAREN LBLOCK code_block:cb RBLOCK
     {:
@@ -758,6 +760,7 @@ function ::=
         sem.currentFunctionReturnType = null;
         sem.hasReturnInFunction = false;
         exitScope();
+        mips.genFuncEnd();
     :};
 
 // Parameters
