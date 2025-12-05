@@ -1,5 +1,4 @@
 import java.io.*;
-import java_cup.runtime.ComplexSymbolFactory;
 
 public class Main {
   // Receives the name of the source code file as the first parameter.
@@ -11,6 +10,7 @@ public class Main {
 
     FileReader f = new FileReader("../" + args[0]);
     parser p = new parser(new Lexer(f));
+    p.filename = args[0];
     try {
       p.parse();
     } catch (Exception e) {

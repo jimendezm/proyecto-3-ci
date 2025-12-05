@@ -10,6 +10,7 @@ echo "Compiling..." \
          "../src/Tac.java" \
          "../src/Res.java" \
          "../src/SemanticAnalyzer.java" \
+         "../src/Mips.java" \
 && echo "Compilation done. Executing..." \
 && java -cp "../build/:../lib/java-cup-11b-runtime.jar" Main "$1" \
 && echo "Execution done."

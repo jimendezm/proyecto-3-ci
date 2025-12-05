@@ -8,6 +8,9 @@ import java.util.Map;
 parser code {:
     SemanticAnalyzer sem = new SemanticAnalyzer(true);
     Tac tac = new Tac();
+    Mips mips = new Mips();
+
+    public String filename = "";
     HashMap<String, ArrayList<String>> listaTablasSimbolos = new HashMap<String, ArrayList<String>>();
     String currentHash;
     String globalHash = "globalIS";
@@ -329,6 +332,7 @@ program ::=
             // saveTablesToFile();
             // imprimirTablasSimbolos();
             tac.dump();
+            mips.dump(filename.split("\\.")[0] + ".asm");
             System.out.println("Parsing completed.");
         :} ;
 
@@ -399,6 +403,7 @@ main ::= type_fn:type PRINCIPAL:id
             sem.inFunction = false;
             sem.currentFunctionReturnType = null;
             exitScope();
+            mips.genMain();
         :} ;
 
 // Type definitions
