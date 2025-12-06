@@ -36,6 +36,16 @@ public class Mips {
     return "L" + labelCounter++;
   }
 
+  public String funcName = "";
+
+  public String funcType = "";
+
+  public int paramsCount = 0;
+
+  public int savedRegsCount = 0;
+
+  public int frameSize = 0; // In bytes.
+
   public void genMainStart() {
     addText(".globl main", false);
     addText("main:");
@@ -46,11 +56,26 @@ public class Mips {
     addText("  syscall");
   }
 
-  public void genFuncStart(String name) {
-    addText(getLabel() + ": # " + name, false);
+  public void genFuncStart() {
+    addText(getLabel() + ": # " + funcName, false);
+    // Space needed. word_size * (paramsCount + fp + ra).
+    // 1 is added to point to the next free word.
+    // Only 4 parameters are saved because the rest are in stack from caller.
+    frameSize = 4 * (Math.min(paramsCount, 4) + 2 + 1);
+    addText("  addiu $sp, $sp, -" + frameSize);
+    addText("  sw $ra, " + (frameSize - 4) + "($sp)");
+    addText("  sw $fp, " + (frameSize - 8) + "($sp)");
+    addText("  move $fp, $sp");
+    for (int i = 0; i < Math.min(paramsCount, 4); i++) {
+      int offset = frameSize - 12 - i * 4;
+      addText("  sw $a" + i + ", " + offset + "($sp)");
+    }
   }
 
   public void genFuncEnd() {
+    addText("  lw $ra, " + (frameSize - 4) + "($sp)");
+    addText("  lw $fp, " + (frameSize - 8) + "($sp)");
+    addText("  addiu $sp, $sp, " + frameSize);
     addText("  jr $ra");
   }
 

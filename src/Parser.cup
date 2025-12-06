@@ -750,9 +750,15 @@ function ::=
         } else {
             System.err.println("ERROR SEMANTICO: función '" + idStr + "' ya declarada");
         }
-        mips.genFuncStart(id);
+        mips.funcName = id;
+        mips.funcType = tipoFuncion;
+        mips.paramsCount = 0;
     :}
-    LPAREN params RPAREN LBLOCK code_block:cb RBLOCK
+    LPAREN params RPAREN
+    {:
+        mips.genFuncStart();
+    :}
+    LBLOCK code_block:cb RBLOCK
     {:
         sem.checkMissingReturn(currentHash);
         // System.out.println("fin de función: " + currentHash);
@@ -764,8 +770,8 @@ function ::=
     :};
 
 // Parameters
-params ::= param 
-        | param COMMA params
+params ::= param {: mips.paramsCount++; :}
+        | param COMMA params {: mips.paramsCount++; :}
         | ;
 
 // Parameter definitions
