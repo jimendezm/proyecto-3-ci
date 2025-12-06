@@ -73,10 +73,11 @@ public class Mips {
   }
 
   public void genFuncEnd() {
-    addText("  lw $ra, " + (frameSize - 4) + "($sp)");
-    addText("  lw $fp, " + (frameSize - 8) + "($sp)");
+    addText("  lw $ra, " + (frameSize - 4) + "($fp)");
+    addText("  lw $fp, " + (frameSize - 8) + "($fp)");
     addText("  addiu $sp, $sp, " + frameSize);
     addText("  jr $ra");
+    addText("  nop");
   }
 
   public void dump(String filename) {
