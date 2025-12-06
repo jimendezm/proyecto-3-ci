@@ -9,7 +9,7 @@ public class Mips {
 
   private int labelCounter = 0;
 
-  private HashMap<String, Func> funcTable = new HashMap<>();
+  public HashMap<String, Func> funcTable = new HashMap<>();
 
   public Func f; // Current function.
 

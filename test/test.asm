@@ -1,6 +1,6 @@
 .data
 .text
-L0: # f
+L0: # f1
 		addiu	$sp,	$sp,	-16
 		sw		$ra,	12($sp)
 		sw		$fp,	8($sp)
@@ -11,7 +11,7 @@ L0: # f
 		addiu	$sp,	$sp,	16
 		jr		$ra
 		nop
-L1: # f
+L1: # f2
 		addiu	$sp,	$sp,	-20
 		sw		$ra,	16($sp)
 		sw		$fp,	12($sp)
@@ -23,7 +23,7 @@ L1: # f
 		addiu	$sp,	$sp,	20
 		jr		$ra
 		nop
-L2: # f
+L2: # f3
 		addiu	$sp,	$sp,	-24
 		sw		$ra,	20($sp)
 		sw		$fp,	16($sp)
@@ -36,7 +36,7 @@ L2: # f
 		addiu	$sp,	$sp,	24
 		jr		$ra
 		nop
-L3: # f
+L3: # f4
 		addiu	$sp,	$sp,	-28
 		sw		$ra,	24($sp)
 		sw		$fp,	20($sp)
@@ -50,7 +50,7 @@ L3: # f
 		addiu	$sp,	$sp,	28
 		jr		$ra
 		nop
-L4: # f
+L4: # f5
 		addiu	$sp,	$sp,	-28
 		sw		$ra,	24($sp)
 		sw		$fp,	20($sp)
