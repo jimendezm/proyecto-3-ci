@@ -750,9 +750,9 @@ function ::=
         } else {
             System.err.println("ERROR SEMANTICO: función '" + idStr + "' ya declarada");
         }
-        mips.funcName = id;
-        mips.funcType = tipoFuncion;
-        mips.paramsCount = 0;
+        mips.f = new Func();
+        mips.f.funcName = id;
+        mips.f.funcType = tipoFuncion;
     :}
     LPAREN params RPAREN
     {:
@@ -770,8 +770,8 @@ function ::=
     :};
 
 // Parameters
-params ::= param {: mips.paramsCount++; :}
-        | param COMMA params {: mips.paramsCount++; :}
+params ::= param {: mips.f.paramsCount++; :}
+        | param COMMA params {: mips.f.paramsCount++; :}
         | ;
 
 // Parameter definitions
@@ -913,7 +913,7 @@ var_assignment ::= ID:id ASSIGN expr:value
                  | array_decl ASSIGN expr:value ;
 
 // Function call
-function_call ::= ID:id LPAREN literal_params:params RPAREN 
+function_call ::= ID:id LPAREN literal_params RPAREN 
                 {:
                     String idStr = getIDValue(id);
                     String funcType = findSymbolType(idStr);
