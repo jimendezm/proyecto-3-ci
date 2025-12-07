@@ -9,11 +9,13 @@ public class Mips {
 
   private int labelCounter = 0;
 
-  private int frameszLocation = 0; // Frame size needing to get patched.
+  private int frameSizeLocation = 0; // Frame size needing to get patched.
 
   public HashMap<String, Func> funcTable = new HashMap<>();
 
   public Func f; // Current function.
+
+  public Func mf = new Func(); // For main function only.
 
   private void addData(String s, boolean spacesToTabs) {
     if (spacesToTabs) {
@@ -46,12 +48,13 @@ public class Mips {
   public void genMainStart() {
     addText(".globl main", false);
     addText("main:");
-    addText("  addiu $sp, $sp, -[FRAMESZ]");
-
-    addText("  move $fp, $sp");
+    addText("  addiu $sp, $sp, -?"); // This is later patched with the actual frame size.
+    frameSizeLocation = textSegment.size() - 1;
   }
 
   public void genMainEnd() {
+    int frameSize = mf.localVarsCount * 4;
+    textSegment.set(frameSizeLocation, "\t\taddiu\t$sp,\t$sp,\t-" + frameSize);
     addText("  li  $v0, 10");
     addText("  syscall");
   }
@@ -86,8 +89,10 @@ public class Mips {
 
   public void genFuncCall() {
     String label = funcTable.get(f.funcName).label;
-    addText("  jal " + label);
+    addText("  jal  " + label);
   }
+
+
 
   public void dump(String filename) {
     try {

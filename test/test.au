@@ -1,8 +1,8 @@
 void f1єint aэ ¿?
 void f2єint a, int bэ ¿?
-void f3єint a, int b, int cэ ¿?
-void f4єint a, int b, int c, int dэ ¿?
-void f5єint a, int b, int c, int d, int eэ ¿?
+|void f3єint a, int b, int cэ ¿?
+|void f4єint a, int b, int c, int dэ ¿?
+|void f5єint a, int b, int c, int d, int eэ ¿?
 void principal ¿
   f1є1э$
   f2є1, 2э$
