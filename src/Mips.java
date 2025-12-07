@@ -52,16 +52,19 @@ public class Mips {
   }
 
   public void genFuncStart() {
-    addText(getLabel() + ": # " + f.funcName, false);
+    String label = getLabel();
+    f.label = label;
+    addText(label + ": # " + f.funcName, false);
     // Space needed. word_size * (paramsCount + fp + ra).
     // 1 is added to point to the next free word.
     // Only 4 parameters are saved because the rest are in stack from caller.
-    f.frameSize = 4 * (Math.min(f.paramsCount, 4) + 2 + 1);
+    // TO DO: Handle float parameters.
+    f.frameSize = 4 * (Math.min(f.intParamsCount, 4) + 2 + 1);
     addText("  addiu $sp, $sp, -" + f.frameSize);
     addText("  sw  $ra, " + (f.frameSize - 4) + "($sp)");
     addText("  sw  $fp, " + (f.frameSize - 8) + "($sp)");
     addText("  move $fp, $sp");
-    for (int i = 0; i < Math.min(f.paramsCount, 4); i++) {
+    for (int i = 0; i < Math.min(f.intParamsCount, 4); i++) {
       int offset = f.frameSize - 12 - i * 4;
       addText("  sw  $a" + i + ", " + offset + "($sp)");
     }
@@ -74,6 +77,11 @@ public class Mips {
     addText("  jr  $ra");
     addText("  nop");
     funcTable.put(f.funcName, f);
+  }
+
+  public void genFuncCall() {
+    String label = funcTable.get(f.funcName).label;
+    addText("  jal " + label);
   }
 
   public void dump(String filename) {

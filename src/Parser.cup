@@ -770,9 +770,9 @@ function ::=
     :};
 
 // Parameters
-params ::= param {: mips.f.paramsCount++; :}
-        | param COMMA params {: mips.f.paramsCount++; :}
-        | ;
+params ::= param
+         | param COMMA params
+         | ;
 
 // Parameter definitions
 param ::= type_nt:type ID:id
@@ -781,6 +781,13 @@ param ::= type_nt:type ID:id
             String idStr = getIDValue(id);
             if (!addSymbol(idStr, typeStr, "parameter")) {
                 System.err.println("ERROR SEMANTICO: parámetro '" + idStr + "' ya declarado");
+            }
+            if (typeStr == "int") {
+                mips.f.intParamsCount++;
+            } else if (typeStr == "float") {
+                // To do.
+            } else {
+                // Handle other types.
             }
         :}
         | type_nt:type ID:id LBRACKET RBRACKET
@@ -913,14 +920,21 @@ var_assignment ::= ID:id ASSIGN expr:value
                  | array_decl ASSIGN expr:value ;
 
 // Function call
-function_call ::= ID:id LPAREN literal_params RPAREN 
-                {:
+function_call ::= ID:id
+               {:
+                    mips.f = new Func();
+                    mips.f.funcName = id;
+               :}
+                    LPAREN literal_params RPAREN 
+               {:
                     String idStr = getIDValue(id);
                     String funcType = findSymbolType(idStr);
                     sem.checkFunctionCall(idStr, funcType);
                     sem.captureVariableUsage(idStr, "function call", findSymbolType(idStr));
                     RESULT = new Res("unknown", "func_call_temp");
-                :};
+                    mips.genFuncCall();
+                    System.out.println(mips.funcTable.get(id).funcName);
+               :};
 
 // Literal parameters
 literal_params ::= expr

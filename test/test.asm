@@ -66,5 +66,7 @@ L4: # f5
 		nop
 .globl main
 main:
+		jal	L0
+		jal	L1
 		li		$v0,	10
 		syscall
