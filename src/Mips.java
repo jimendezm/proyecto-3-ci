@@ -9,6 +9,8 @@ public class Mips {
 
   private int labelCounter = 0;
 
+  private int frameszLocation = 0; // Frame size needing to get patched.
+
   public HashMap<String, Func> funcTable = new HashMap<>();
 
   public Func f; // Current function.
@@ -44,6 +46,9 @@ public class Mips {
   public void genMainStart() {
     addText(".globl main", false);
     addText("main:");
+    addText("  addiu $sp, $sp, -[FRAMESZ]");
+
+    addText("  move $fp, $sp");
   }
 
   public void genMainEnd() {

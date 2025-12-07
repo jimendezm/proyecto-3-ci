@@ -396,6 +396,7 @@ main ::= type_fn:type PRINCIPAL:id
                 System.err.println("ERROR SEMANTICO: función principal ya declarada");
             }
             mips.genMainStart();
+            mips.f = new Func();
         :}
         LBLOCK code_block:cb RBLOCK
         {:
@@ -933,7 +934,6 @@ function_call ::= ID:id
                     sem.captureVariableUsage(idStr, "function call", findSymbolType(idStr));
                     RESULT = new Res("unknown", "func_call_temp");
                     mips.genFuncCall();
-                    System.out.println(mips.funcTable.get(id).funcName);
                :};
 
 // Literal parameters
