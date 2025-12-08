@@ -13,9 +13,13 @@ public class Mips {
 
   public HashMap<String, Func> funcTable = new HashMap<>();
 
-  public Func f; // Current function.
+  public Func f; // Current function definition.
 
-  public Func mf = new Func(); // For main function only.
+  public Func fc; // Current function call.
+
+  public int floatCounter = 0;
+
+  public HashMap<String, String> floatsTable = new HashMap<>(); // Float variables.
 
   private void addData(String s, boolean spacesToTabs) {
     if (spacesToTabs) {
@@ -45,6 +49,10 @@ public class Mips {
     return "L" + labelCounter++;
   }
 
+  private String getFloatLabel() {
+    return "f" + floatCounter++;
+  }
+
   public void genMainStart() {
     addText(".globl main", false);
     addText("main:");
@@ -53,7 +61,7 @@ public class Mips {
   }
 
   public void genMainEnd() {
-    int frameSize = mf.localVarsCount * 4;
+    int frameSize = f.localVarsCount * 4;
     textSegment.set(frameSizeLocation, "\t\taddiu\t$sp,\t$sp,\t-" + frameSize);
     addText("  li  $v0, 10");
     addText("  syscall");
@@ -64,10 +72,9 @@ public class Mips {
     f.label = label;
     addText(label + ": # " + f.funcName, false);
     // Space needed. word_size * (paramsCount + fp + ra).
-    // 1 is added to point to the next free word.
     // Only 4 parameters are saved because the rest are in stack from caller.
     // TO DO: Handle float parameters.
-    f.frameSize = 4 * (Math.min(f.intParamsCount, 4) + 2 + 1);
+    f.frameSize = 4 * (Math.min(f.intParamsCount, 4) + 2);
     addText("  addiu $sp, $sp, -" + f.frameSize);
     addText("  sw  $ra, " + (f.frameSize - 4) + "($sp)");
     addText("  sw  $fp, " + (f.frameSize - 8) + "($sp)");
@@ -88,11 +95,17 @@ public class Mips {
   }
 
   public void genFuncCall() {
-    String label = funcTable.get(f.funcName).label;
+    String label = funcTable.get(fc.funcName).label;
     addText("  jal  " + label);
   }
 
-
+  public void genVarCreation(String type, String name) {
+    if (type == "int") {
+      // TO DO.
+    } else {
+      // TO DO.
+    }
+  }
 
   public void dump(String filename) {
     try {

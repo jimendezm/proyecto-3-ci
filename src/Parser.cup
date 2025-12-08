@@ -868,6 +868,7 @@ var_creation ::= LET type_nt:type ID:id DOLLAR
                    if (!addSymbol(idStr, typeStr, "local_variable")) {
                        System.err.println("ERROR SEMANTICO: variable local '" + idStr + "' ya declarada");
                    }
+                   mips.genVarCreation();
                :}
                | LET type_nt:type array_decl:arr DOLLAR
                {:
@@ -888,6 +889,7 @@ var_creation ::= LET type_nt:type ID:id DOLLAR
                        System.err.println("ERROR SEMANTICO: variable local '" + idStr + "' ya declarada");
                    }
                    // System.out.println("Variable '" + idStr + "' initialized with value");
+                   mips.genVarCreation();
                :}
                | LET type_nt:type array_decl:arr init_nt DOLLAR
                {:
@@ -923,8 +925,8 @@ var_assignment ::= ID:id ASSIGN expr:value
 // Function call
 function_call ::= ID:id
                {:
-                    mips.f = new Func();
-                    mips.f.funcName = id;
+                    mips.fc = new Func();
+                    mips.fc.funcName = id;
                :}
                     LPAREN literal_params RPAREN 
                {:

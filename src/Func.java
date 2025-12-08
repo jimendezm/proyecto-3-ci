@@ -1,4 +1,7 @@
 // Just holds information about a function being translated to MIPS.
+
+import java.util.HashMap;
+
 public class Func {
   public String funcName = "";
   public String funcType = "";
@@ -8,4 +11,6 @@ public class Func {
   public int localVarsCount = 0;
   public int savedRegsCount = 0;
   public int frameSize = 0; // In bytes.
+  public int localVarsOffsetCounter = 0;
+  public HashMap<String, Integer> localVarsOffsets = new HashMap<>();
 }
