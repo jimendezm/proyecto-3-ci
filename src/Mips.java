@@ -58,6 +58,7 @@ public class Mips {
     addText("main:");
     addText("  addiu $sp, $sp, -?"); // This is later patched with the actual frame size.
     frameSizeLocation = textSegment.size() - 1;
+    addText("  move $fp, $sp");
   }
 
   public void genMainEnd() {
@@ -99,12 +100,28 @@ public class Mips {
     addText("  jal  " + label);
   }
 
-  public void genVarCreation(String type, String name) {
-    if (type == "int") {
-      // TO DO.
-    } else {
-      // TO DO.
+  // Returns first unused register.
+  public int getReg() {
+    for (int i = 0; i < f.registersUsed.size(); i++) {
+      if (!f.registersUsed.get(i)) {
+        f.registersUsed.put(i, true);
+        return i;
+      }
     }
+    return -1;
+  }
+
+  public void genVarCreation(String reg) {
+    // f.intParamsCount++;
+    // int offset = 4 * (2 + f.intParamsCount + f.floatParamsCount + f.localVarsOffsetCounter);
+    // addText("  sw,  " + reg + ", " + offset + "");
+    // f.localVarsOffsetCounter += 4;
+  }
+
+  public String primaryInt(String value) {
+    int reg = getReg();
+    addText("  li  $t" + reg + ", " + value);
+    return "t" + reg;
   }
 
   public void dump(String filename) {

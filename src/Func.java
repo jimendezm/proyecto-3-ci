@@ -13,4 +13,16 @@ public class Func {
   public int frameSize = 0; // In bytes.
   public int localVarsOffsetCounter = 0;
   public HashMap<String, Integer> localVarsOffsets = new HashMap<>();
+  // Holds <temporaryRegNumber, usedOrNot>.
+  public HashMap<Integer, Boolean> registersUsed = new HashMap<>();
+
+  public Func() {
+    resetRegTable();
+  }
+
+  public void resetRegTable() {
+    for (int i = 0; i < 8; i++) {
+      registersUsed.put(i, false);
+    }
+  }
 }

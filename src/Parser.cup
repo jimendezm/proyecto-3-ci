@@ -301,7 +301,7 @@ terminal String LEXICAL_ERROR;
 
 // Non-terminal declarations
 non terminal program, global_vars, global_var, functions, function, params, param, main;
-non terminal type_nt,type_fn, array_decl, init_nt, code_block, statement;
+non terminal type_nt,type_fn, array_decl, code_block, statement;
 non terminal sentence, control_structure, var_creation, var_assignment, function_call;
 non terminal literal_params, inputfn, outputfn, output_value, code_block_return, decide;
 non terminal decide_options, decide_option, decide_else, loop_nt, for_nt, cs_code_block;
@@ -311,7 +311,7 @@ non terminal decide_option_body, bool_lit;
 // Res expressions
 non terminal Res expr, inc_dec_expr, primary_expr, or_expr, and_expr, lp_rel_expr;
 non terminal Res hp_rel_expr, logic_neg, adit_expr, mult_expr, unary_minus, unary_expr;
-non terminal Res num_lit, power_expr;
+non terminal Res num_lit, power_expr, init_nt;
 
 // Operator precedence
 precedence left OR;
@@ -441,7 +441,7 @@ int_array_content ::= int_array_content COMMA INT_LIT | INT_LIT ;
 char_array_content ::= char_array_content COMMA CHAR_LIT | CHAR_LIT ;
 
 // Initialization
-init_nt ::= ASSIGN expr
+init_nt ::= ASSIGN expr:e {: RESULT = e; :}
           | ASSIGN array_lit ;
 
 // Expression parsing
@@ -708,7 +708,11 @@ inc_dec_expr ::= ID:id INC
                | primary_expr:p {: RESULT = p; :};
 
 // Primary expressions
-primary_expr ::= INT_LIT:i {: RESULT = new Res("int", tac.primary(i)); :}
+primary_expr ::= INT_LIT:i
+                {:
+                    String reg = mips.primaryInt(i.toString());
+                    RESULT = new Res("int", reg);
+                :}
                | FLOAT_LIT:f {: RESULT = new Res("float", tac.primary(f)); :}
                | CHAR_LIT:c {: RESULT = new Res("char", "char_temp"); :}
                | STRING_LIT:s {: RESULT = new Res("string", "string_temp"); :}
@@ -807,7 +811,7 @@ code_block ::= code_block statement | ;
 statement ::= sentence | control_structure ;
 
 // Sentence types
-sentence ::= var_creation
+sentence ::= var_creation {: mips.f.resetRegTable(); mips.f.localVarsCount++; :}
            | var_assignment DOLLAR
            | function_call DOLLAR
            | ID:id INC DOLLAR
@@ -868,7 +872,7 @@ var_creation ::= LET type_nt:type ID:id DOLLAR
                    if (!addSymbol(idStr, typeStr, "local_variable")) {
                        System.err.println("ERROR SEMANTICO: variable local '" + idStr + "' ya declarada");
                    }
-                   mips.genVarCreation();
+                   mips.genVarCreation("");
                :}
                | LET type_nt:type array_decl:arr DOLLAR
                {:
@@ -880,7 +884,7 @@ var_creation ::= LET type_nt:type ID:id DOLLAR
                        }
                    }
                :}
-               | LET type_nt:type ID:id init_nt DOLLAR
+               | LET type_nt:type ID:id init_nt:e DOLLAR
                {:
                    String typeStr = ((Res)type).type();
                    String idStr = getIDValue(id);
@@ -889,7 +893,7 @@ var_creation ::= LET type_nt:type ID:id DOLLAR
                        System.err.println("ERROR SEMANTICO: variable local '" + idStr + "' ya declarada");
                    }
                    // System.out.println("Variable '" + idStr + "' initialized with value");
-                   mips.genVarCreation();
+                   mips.genVarCreation(e.reg());
                :}
                | LET type_nt:type array_decl:arr init_nt DOLLAR
                {:

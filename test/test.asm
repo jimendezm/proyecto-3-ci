@@ -25,8 +25,13 @@ L1: # f2
 		nop
 .globl main
 main:
-		addiu	$sp,	$sp,	-16
+		addiu	$sp,	$sp,	-4
+		move	$fp,	$sp
+		li		$t0,	1
 		jal		L0
+		li		$t1,	1
+		li		$t2,	2
 		jal		L1
+		li		$t3,	0
 		li		$v0,	10
 		syscall
