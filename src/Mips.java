@@ -21,6 +21,7 @@ public class Mips {
 
   public HashMap<String, String> floatsTable = new HashMap<>(); // Float variables.
 
+  // Adds a line to the data segment.
   private void addData(String s, boolean spacesToTabs) {
     if (spacesToTabs) {
       dataSegment.add(s.replace(" ", "\t"));
@@ -29,10 +30,12 @@ public class Mips {
     }
   }
 
+  // Adds a line to the data segment.
   private void addData(String s) {
     addData(s, true);
   }
 
+  // Adds a line to the text segment.
   private void addText(String s, boolean spacesToTabs) {
     if (spacesToTabs) {
       textSegment.add(s.replace(" ", "\t"));
@@ -41,6 +44,7 @@ public class Mips {
     }
   }
 
+  // Adds a line to the text segment.
   private void addText(String s) {
     addText(s, true);
   }
@@ -53,6 +57,7 @@ public class Mips {
     return "f" + floatCounter++;
   }
 
+  // Generates code for the main function.
   public void genMainStart() {
     addText(".globl main", false);
     addText("main:");
@@ -61,6 +66,7 @@ public class Mips {
     addText("  move $fp, $sp");
   }
 
+  // Generates code for the end of the main function.
   public void genMainEnd() {
     int frameSize = f.localVarsCount * 4;
     textSegment.set(frameSizeLocation, "\t\taddiu\t$sp,\t$sp,\t-" + frameSize);
@@ -68,6 +74,7 @@ public class Mips {
     addText("  syscall");
   }
 
+  // Generates code for the end of the start of a function.
   public void genFuncStart() {
     String label = getLabel();
     f.label = label;
@@ -86,6 +93,7 @@ public class Mips {
     }
   }
 
+  // Generates code for the end of the end of a function.
   public void genFuncEnd() {
     addText("  lw  $ra, " + (f.frameSize - 4) + "($fp)");
     addText("  lw  $fp, " + (f.frameSize - 8) + "($fp)");
@@ -95,6 +103,7 @@ public class Mips {
     funcTable.put(f.funcName, f);
   }
 
+  // Generates code for a function call.
   public void genFuncCall() {
     String label = funcTable.get(fc.funcName).label;
     addText("  jal  " + label);
@@ -118,12 +127,14 @@ public class Mips {
     // f.localVarsOffsetCounter += 4;
   }
 
+  // Generates code for a primary expresion with an int.
   public String primaryInt(String value) {
     int reg = getReg();
     addText("  li  $t" + reg + ", " + value);
     return "t" + reg;
   }
 
+  // Writes all data and text lines of code to a file.
   public void dump(String filename) {
     try {
       PrintWriter writer = new PrintWriter("../" + filename);
